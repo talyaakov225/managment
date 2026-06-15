@@ -7,6 +7,7 @@ import {
   Activity, Users, AlertTriangle,
 } from 'lucide-react';
 import { taskApi } from '../services/api';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { Avatar } from '../components/Avatar';
@@ -42,6 +43,10 @@ export function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useLiveRefresh(() => {
+    taskApi.getDashboard().then((res) => setData(res.data)).catch(() => {});
+  }, 8000, !loading);
 
   if (loading) {
     return <SkeletonDashboard />;

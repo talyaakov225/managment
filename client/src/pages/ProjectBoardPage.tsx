@@ -20,6 +20,7 @@ import { TaskTableView } from '../components/TaskTableView';
 import { Modal } from '../components/Modal';
 import { Avatar } from '../components/Avatar';
 import { SkeletonKanban } from '../components/Skeleton';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import type { Project, Task, TaskStatus, TaskPriority } from '../types';
 import { STATUSES } from '../types';
 import toast from 'react-hot-toast';
@@ -153,6 +154,19 @@ export function ProjectBoardPage() {
       toast.error(t.project.loadFailed); navigate('/dashboard');
     } finally { setLoading(false); }
   }
+
+  async function silentRefresh() {
+    if (!id || activeTask) return;
+    try {
+      const [tasksRes, membersRes] = await Promise.all([
+        taskApi.getByProject(id), memberApi.getByProject(id),
+      ]);
+      setTasks(tasksRes.data);
+      setMembers(membersRes.data);
+    } catch { /* silent */ }
+  }
+
+  useLiveRefresh(silentRefresh, 5000, !!id && !loading);
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id);

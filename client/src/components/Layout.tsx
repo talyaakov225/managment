@@ -8,6 +8,7 @@ import {
   Bell, Search, CheckCheck, ExternalLink, StickyNote, AlarmClock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useTheme } from '../context/ThemeContext';
 import { useLang } from '../context/LangContext';
 import { useNotification } from '../context/NotificationContext';
@@ -155,6 +156,17 @@ export function Layout() {
       // silent
     }
   }
+
+  useLiveRefresh(async () => {
+    try {
+      const [projRes, favRes] = await Promise.all([
+        projectApi.getAll(),
+        favoriteApi.getAll(),
+      ]);
+      setProjects(projRes.data);
+      setFavorites(favRes.data);
+    } catch { /* silent */ }
+  }, 10000);
 
   async function handleCreateProject() {
     if (!newProjectName.trim()) return;

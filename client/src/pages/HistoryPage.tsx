@@ -6,6 +6,7 @@ import {
   MessageSquare, CheckCircle2, Trash2, ListTodo, AlarmClock,
 } from 'lucide-react';
 import { taskApi, projectApi, reminderApi, type ReminderItem } from '../services/api';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useLang } from '../context/LangContext';
 import { Avatar } from '../components/Avatar';
 import { RichTextViewer } from '../components/RichTextEditor';
@@ -75,6 +76,27 @@ export function HistoryPage() {
     } catch { /* silent */ }
     finally { setLoadingReminders(false); }
   }
+
+  async function silentRefresh() {
+    try {
+      if (activeTab === 'reminders') {
+        const { data } = await reminderApi.getAll();
+        setReminders(data);
+      } else {
+        const params: Record<string, string | number> = { page, tab: activeTab };
+        if (filters.status) params.status = filters.status;
+        if (filters.priority) params.priority = filters.priority;
+        if (filters.projectId) params.projectId = filters.projectId;
+        if (filters.search) params.search = filters.search;
+        const { data } = await taskApi.getHistory(params as any);
+        setTasks(data.tasks);
+        setTotalPages(data.totalPages);
+        setTotal(data.total);
+      }
+    } catch { /* silent */ }
+  }
+
+  useLiveRefresh(silentRefresh, 8000, !loading && !loadingReminders);
 
   function clearFilters() {
     setFilters({ status: '', priority: '', projectId: '', search: '' });

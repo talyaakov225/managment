@@ -6,6 +6,7 @@ import {
   Clock, X, MessageSquare, CheckCircle2, AlertCircle, Users,
 } from 'lucide-react';
 import { taskApi, projectApi } from '../services/api';
+import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useLang } from '../context/LangContext';
 import { Avatar } from '../components/Avatar';
 import type { Task, Project, TaskPriority, TaskStatus } from '../types';
@@ -59,6 +60,11 @@ export function TasksPage() {
 
   async function loadTasks() {
     setLoading(true);
+    await silentLoadTasks();
+    setLoading(false);
+  }
+
+  async function silentLoadTasks() {
     try {
       const params: Record<string, string | number> = { page, tab: 'active' };
       if (filters.status) params.status = filters.status;
@@ -70,8 +76,9 @@ export function TasksPage() {
       setTotal(data.total);
       setTotalPages(data.totalPages);
     } catch { /* */ }
-    setLoading(false);
   }
+
+  useLiveRefresh(silentLoadTasks, 5000, !loading);
 
   const clearFilters = () => { setFilters({ status: '', priority: '', projectId: '', search: '' }); setPage(1); };
   const hasFilters = filters.status || filters.priority || filters.projectId || filters.search;
