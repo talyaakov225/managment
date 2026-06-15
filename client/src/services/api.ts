@@ -53,6 +53,8 @@ export const authApi = {
   me: () => api.get<User>('/auth/me'),
   updateProfile: (data: { name?: string; avatar?: string }) =>
     api.put<User>('/auth/profile', data),
+  updatePreferences: (data: { seeAllTasks?: boolean }) =>
+    api.put<User>('/auth/preferences', data),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put('/auth/password', data),
 };

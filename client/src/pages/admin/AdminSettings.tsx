@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminSettingsApi } from '../../services/adminApi';
+import { authApi } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
 import { Modal } from '../../components/Modal';
 import type { SystemSetting } from '../../types/admin';
 
 export function AdminSettings() {
   const { t, lang } = useLang();
+  const { user, updateUser } = useAuth();
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [showCreate, setShowCreate] = useState(false);
   const [newSetting, setNewSetting] = useState({ key: '', value: '', type: 'string', group: 'general', label_he: '', label_en: '' });
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -58,6 +62,19 @@ export function AdminSettings() {
     } catch { toast.error(t.admin.deleteFailed); }
   }
 
+  async function toggleSeeAllTasks() {
+    setTogglingVisibility(true);
+    try {
+      const newVal = !user?.seeAllTasks;
+      const { data } = await authApi.updatePreferences({ seeAllTasks: newVal });
+      updateUser(data);
+      toast.success(lang === 'he'
+        ? (newVal ? 'כעת תראה את כל המשימות במערכת' : 'כעת תראה רק משימות שהוקצו/נוצרו על ידך')
+        : (newVal ? 'Now viewing all tasks in the system' : 'Now viewing only your tasks'));
+    } catch { toast.error(lang === 'he' ? 'שגיאה בעדכון' : 'Update failed'); }
+    finally { setTogglingVisibility(false); }
+  }
+
   const groups = settings.reduce<Record<string, SystemSetting[]>>((acc, s) => {
     (acc[s.group] ??= []).push(s);
     return acc;
@@ -82,6 +99,52 @@ export function AdminSettings() {
           <button onClick={() => setShowCreate(true)} className="btn-primary">
             <Plus className="w-4 h-4" />{t.admin.addSetting}
           </button>
+        </div>
+
+        {/* Admin Preferences */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold uppercase text-slate-400 mb-3">
+            {lang === 'he' ? 'העדפות אדמין' : 'Admin Preferences'}
+          </h2>
+          <div className="card p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${user?.seeAllTasks ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                  {user?.seeAllTasks ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {lang === 'he' ? 'הצגת כל המשימות' : 'Show all tasks'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {lang === 'he'
+                      ? 'כשמופעל, תראה את כל המשימות במערכת כולל כאלה שלא הוקצו אליך'
+                      : 'When enabled, you\'ll see all tasks in the system including ones not assigned to you'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={toggleSeeAllTasks}
+                disabled={togglingVisibility}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  user?.seeAllTasks ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+                } ${togglingVisibility ? 'opacity-50' : ''}`}
+              >
+                <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                  user?.seeAllTasks ? (lang === 'he' ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+            {user?.seeAllTasks && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  {lang === 'he'
+                    ? '⚡ מצב פעיל – אתה רואה את כל המשימות במערכת, כולל כאלה שנוצרו על ידי משתמשים אחרים ולא הוקצו אליך.'
+                    : '⚡ Active – You are viewing all tasks in the system, including those created by other users and not assigned to you.'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {Object.entries(groups).map(([group, groupSettings]) => (

@@ -17,9 +17,11 @@ const taskInclude = {
   _count: { select: { comments: true } },
 };
 
-function taskVisibilityFilter(userId: string, includeDeleted = false) {
+function taskVisibilityFilter(userId: string, includeDeleted = false, seeAll = false) {
+  const base = includeDeleted ? {} : { isDeleted: false };
+  if (seeAll) return base;
   return {
-    ...(includeDeleted ? {} : { isDeleted: false }),
+    ...base,
     OR: [
       { creatorId: userId },
       { creatorId: null },
@@ -36,10 +38,11 @@ async function verifyProjectAccess(projectId: string, _userId: string): Promise<
 taskRouter.get('/dashboard/stats', async (req: AuthRequest, res: Response, next) => {
   try {
     const userId = req.userId!;
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { seeAllTasks: true } });
 
     const tasks = await prisma.task.findMany({
       where: {
-        ...taskVisibilityFilter(userId),
+        ...taskVisibilityFilter(userId, false, me?.seeAllTasks),
       },
       include: taskInclude,
       orderBy: { updatedAt: 'desc' },
@@ -69,6 +72,7 @@ taskRouter.get('/dashboard/stats', async (req: AuthRequest, res: Response, next)
 taskRouter.get('/history', async (req: AuthRequest, res: Response, next) => {
   try {
     const userId = req.userId!;
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { seeAllTasks: true } });
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = 20;
     const tab = (req.query.tab as string) || 'all';
@@ -78,7 +82,7 @@ taskRouter.get('/history', async (req: AuthRequest, res: Response, next) => {
     const search = req.query.search as string | undefined;
 
     const where: Record<string, unknown> = {
-      ...taskVisibilityFilter(userId, tab === 'deleted'),
+      ...taskVisibilityFilter(userId, tab === 'deleted', me?.seeAllTasks),
     };
 
     if (tab === 'completed') {

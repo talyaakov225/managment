@@ -26,11 +26,10 @@ projectTaskRouter.get('/:id/tasks', async (req: AuthRequest, res: Response, next
     const userId = req.userId!;
     await verifyProjectAccess(req.params.id, userId);
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { globalRole: true } });
-    const isAdmin = user?.globalRole === 'ADMIN' || user?.globalRole === 'SUPER_ADMIN';
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { globalRole: true, seeAllTasks: true } });
 
     const where: Record<string, unknown> = { projectId: req.params.id, isDeleted: false };
-    if (!isAdmin) {
+    if (!user?.seeAllTasks) {
       where.OR = [
         { creatorId: userId },
         { creatorId: null },

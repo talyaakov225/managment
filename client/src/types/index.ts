@@ -4,6 +4,7 @@ export interface User {
   email: string;
   avatar: string | null;
   globalRole?: string;
+  seeAllTasks?: boolean;
   createdAt: string;
 }
 

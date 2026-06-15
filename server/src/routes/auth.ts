@@ -86,6 +86,7 @@ authRouter.post('/login', async (req, res: Response, next) => {
         email: user.email,
         avatar: user.avatar,
         globalRole: user.globalRole,
+        seeAllTasks: user.seeAllTasks,
         createdAt: user.createdAt,
       },
       ...tokens,
@@ -103,7 +104,7 @@ authRouter.get('/me', authenticate, async (req: AuthRequest, res: Response, next
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
-      select: { id: true, name: true, email: true, avatar: true, globalRole: true, isApproved: true, createdAt: true },
+      select: { id: true, name: true, email: true, avatar: true, globalRole: true, isApproved: true, seeAllTasks: true, createdAt: true },
     });
 
     if (!user) {
@@ -135,13 +136,30 @@ authRouter.put('/profile', authenticate, async (req: AuthRequest, res: Response,
     const user = await prisma.user.update({
       where: { id: req.userId },
       data: updateData,
-      select: { id: true, name: true, email: true, avatar: true, globalRole: true, createdAt: true },
+      select: { id: true, name: true, email: true, avatar: true, globalRole: true, seeAllTasks: true, createdAt: true },
     });
 
     res.json(user);
   } catch (err) {
     next(err);
   }
+});
+
+authRouter.put('/preferences', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({
+      seeAllTasks: z.boolean().optional(),
+    });
+    const data = schema.parse(req.body);
+
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data,
+      select: { id: true, name: true, email: true, avatar: true, globalRole: true, seeAllTasks: true, createdAt: true },
+    });
+
+    res.json(updated);
+  } catch (err) { next(err); }
 });
 
 authRouter.put('/password', authenticate, async (req: AuthRequest, res: Response, next) => {

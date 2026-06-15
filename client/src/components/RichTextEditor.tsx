@@ -38,7 +38,11 @@ const CELL_BG_COLORS = [
   '#FEF2F2', '#FFF7ED', '#FEFCE8', '#F0FDF4', '#ECFDF5',
   '#F0F9FF', '#EFF6FF', '#F5F3FF', '#FDF2F8', '#F1F5F9',
   '#FECACA', '#FED7AA', '#FEF08A', '#BBF7D0', '#BAE6FD',
-  '#C4B5FD', '#FBCFE8', '#E5E7EB',
+  '#C4B5FD', '#FBCFE8', '#E5E7EB', '#FFFFFF', '#F8FAFC',
+  '#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6',
+  '#8B5CF6', '#EC4899', '#14B8A6', '#06B6D4', '#6366F1',
+  '#DC2626', '#EA580C', '#CA8A04', '#16A34A', '#2563EB',
+  '#7C3AED', '#DB2777', '#0D9488', '#0891B2', '#4F46E5',
 ];
 
 const cellBgAttribute = {
