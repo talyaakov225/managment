@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 export function LoginPage() {
@@ -13,8 +14,26 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    try {
+      await api.post('/auth/forgot-password', { email: forgotEmail });
+      setForgotSent(true);
+    } catch {
+      toast.error(t.auth.forgotError || 'שגיאה בשליחת הבקשה');
+    } finally {
+      setForgotLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,62 +113,138 @@ export function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{t.auth.welcomeBack}</h2>
           <p className="text-slate-500 dark:text-slate-400 mb-8">{t.auth.enterCredentials}</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.auth.email}</label>
-              <div className="relative">
-                <Mail className="absolute start-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  className="input ps-11"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+          <AnimatePresence mode="wait">
+            {!showForgot ? (
+              <motion.div key="login-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.auth.email}</label>
+                    <div className="relative">
+                      <Mail className="absolute start-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        className="input ps-11"
+                        placeholder="your@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.auth.password}</label>
-              <div className="relative">
-                <Lock className="absolute start-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="input ps-11 pe-11"
-                  placeholder={t.auth.enterPassword}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t.auth.password}</label>
+                      <button
+                        type="button"
+                        onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        {t.auth.forgotPassword}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute start-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        className="input ps-11 pe-11"
+                        placeholder={t.auth.enterPassword}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  {t.auth.signIn}
-                  <ArrowIcon className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+                  <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        {t.auth.signIn}
+                        <ArrowIcon className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
 
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-            {t.auth.noAccount}{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-              {t.auth.signUp}
-            </Link>
-          </p>
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
+                  {t.auth.noAccount}{' '}
+                  <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                    {t.auth.signUp}
+                  </Link>
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div key="forgot-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {!forgotSent ? (
+                  <form onSubmit={handleForgotPassword} className="space-y-5">
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                        <KeyRound className="w-8 h-8 text-primary-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white text-center">{t.auth.forgotTitle}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center">{t.auth.forgotDesc}</p>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.auth.email}</label>
+                      <div className="relative">
+                        <Mail className="absolute start-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="email"
+                          className="input ps-11"
+                          placeholder="your@email.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={forgotLoading} className="btn-primary w-full py-3">
+                      {forgotLoading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        t.auth.sendResetRequest
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowForgot(false)}
+                      className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 mt-2"
+                    >
+                      {t.auth.backToLogin}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <Mail className="w-8 h-8 text-green-600" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t.auth.resetRequestSent}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t.auth.resetRequestDesc}</p>
+                    <button
+                      onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                      className="btn-primary w-full py-3 mt-4"
+                    >
+                      {t.auth.backToLogin}
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </motion.div>
       </div>

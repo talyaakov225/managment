@@ -171,6 +171,44 @@ authRouter.put('/password', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+authRouter.post('/forgot-password', async (req, res: Response, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) throw new AppError('Email is required', 400);
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      res.json({ message: 'If the email exists, a reset has been requested.' });
+      return;
+    }
+
+    res.json({ message: 'If the email exists, a reset has been requested. Please contact an administrator.' });
+  } catch (err) { next(err); }
+});
+
+authRouter.put('/admin-reset-password', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    const admin = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!admin || (admin.globalRole !== 'ADMIN' && admin.globalRole !== 'SUPER_ADMIN')) {
+      throw new AppError('Forbidden', 403);
+    }
+
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) throw new AppError('Email and newPassword are required', 400);
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) throw new AppError('User not found', 404);
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashed },
+    });
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (err) { next(err); }
+});
+
 authRouter.post('/refresh', async (req, res: Response, next) => {
   try {
     const { refreshToken } = req.body;

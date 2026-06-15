@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Shield, Trash2, ChevronDown, CheckCircle2, XCircle, Clock, Bell } from 'lucide-react';
+import { Search, Shield, Trash2, ChevronDown, CheckCircle2, XCircle, Clock, Bell, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 import { adminUsersApi, adminRolesApi } from '../../services/adminApi';
 import { useLang } from '../../context/LangContext';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,10 @@ export function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [openRoleDropdown, setOpenRoleDropdown] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [filter]);
@@ -89,6 +94,25 @@ export function AdminUsers() {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       load();
     } catch { toast.error(t.admin.deleteFailed); }
+  }
+
+  async function handleResetPassword() {
+    if (!resetUser || !newPassword || newPassword.length < 6) {
+      toast.error(t.admin.passwordMinLength || 'הסיסמה חייבת להכיל לפחות 6 תווים');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      await api.put('/auth/admin-reset-password', { email: resetUser.email, newPassword });
+      toast.success(t.admin.passwordResetSuccess || 'הסיסמה אופסה בהצלחה');
+      setShowResetModal(false);
+      setNewPassword('');
+      setResetUser(null);
+    } catch {
+      toast.error(t.admin.passwordResetFailed || 'שגיאה באיפוס הסיסמה');
+    } finally {
+      setResettingPassword(false);
+    }
   }
 
   async function handleCustomRolesUpdate(userId: string, roleIds: string[]) {
@@ -267,6 +291,16 @@ export function AdminUsers() {
                         </div>
                       )}
 
+                      {(currentUser?.globalRole === 'SUPER_ADMIN' || currentUser?.globalRole === 'ADMIN') && u.id !== currentUser.id && (
+                        <button
+                          onClick={() => { setResetUser(u); setNewPassword(''); setShowResetModal(true); }}
+                          className="btn-ghost p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                          title={t.admin.resetPassword || 'איפוס סיסמה'}
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                      )}
+
                       {currentUser?.globalRole === 'SUPER_ADMIN' && u.id !== currentUser.id && (
                         <button onClick={() => handleDelete(u.id)} className="btn-ghost p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
                           <Trash2 className="w-4 h-4" />
@@ -288,6 +322,41 @@ export function AdminUsers() {
               onSave={(roleIds) => handleCustomRolesUpdate(selectedUser.id, roleIds)}
               t={t}
             />
+          )}
+        </Modal>
+
+        <Modal isOpen={showResetModal} onClose={() => { setShowResetModal(false); setResetUser(null); setNewPassword(''); }} title={t.admin.resetPassword || 'איפוס סיסמה'} size="sm">
+          {resetUser && (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {t.admin.resetPasswordFor || 'איפוס סיסמה עבור'}: <strong>{resetUser.name}</strong> ({resetUser.email})
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  {t.admin.newPassword || 'סיסמה חדשה'}
+                </label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  placeholder={t.admin.enterNewPassword || 'הזינו סיסמה חדשה (מינימום 6 תווים)'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={6}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => { setShowResetModal(false); setResetUser(null); }} className="btn-ghost px-4 py-2">
+                  {t.common.cancel}
+                </button>
+                <button onClick={handleResetPassword} disabled={resettingPassword || newPassword.length < 6} className="btn-primary px-4 py-2">
+                  {resettingPassword ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    t.admin.resetPasswordBtn || 'אפס סיסמה'
+                  )}
+                </button>
+              </div>
+            </div>
           )}
         </Modal>
       </motion.div>
