@@ -5,7 +5,7 @@ import {
   LayoutDashboard, FolderKanban, Settings, LogOut, Plus,
   ChevronLeft, ChevronRight, Moon, Sun, Menu, Languages,
   Shield, FileText, Clock, MessageCircle, Star, ListTodo,
-  Bell, Search, CheckCheck, ExternalLink, StickyNote, AlarmClock,
+  Bell, Search, Check, CheckCheck, ExternalLink, StickyNote, AlarmClock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLiveRefresh } from '../hooks/useLiveRefresh';
@@ -40,7 +40,7 @@ export function Layout() {
   const [creating, setCreating] = useState(false);
 
   const isAdmin = user?.globalRole === 'SUPER_ADMIN';
-  const { unreadCount, notifications, markAllRead } = useNotification();
+  const { unreadCount, notifications, markAllRead, markOneRead } = useNotification();
   const [chatUnread, setChatUnread] = useState(0);
   const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -661,7 +661,18 @@ export function Layout() {
                                   {new Date(n.createdAt).toLocaleString(lang === 'he' ? 'he-IL' : 'en-US', { dateStyle: 'short', timeStyle: 'short' })}
                                 </p>
                               </div>
-                              {n.linkUrl && <ExternalLink className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" />}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {!n.read && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); markOneRead(n.id); }}
+                                    className="p-1 rounded-md hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                                    title={lang === 'he' ? 'סמן כנקרא' : 'Mark as read'}
+                                  >
+                                    <Check className="w-3.5 h-3.5 text-primary-500" />
+                                  </button>
+                                )}
+                                {n.linkUrl && <ExternalLink className="w-3.5 h-3.5 text-slate-300 mt-0.5" />}
+                              </div>
                             </div>
                           </div>
                         ))

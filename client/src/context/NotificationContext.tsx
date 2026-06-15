@@ -16,6 +16,7 @@ interface NotificationContextType {
   unreadCount: number;
   notifications: AppNotification[];
   markAllRead: () => void;
+  markOneRead: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -74,6 +75,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     } catch { /* silent */ }
   }, []);
 
+  const markOneRead = useCallback(async (id: string) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 
@@ -91,7 +100,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [user, requestPermission, checkNew]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, notifications, markAllRead }}>
+    <NotificationContext.Provider value={{ unreadCount, notifications, markAllRead, markOneRead }}>
       {children}
     </NotificationContext.Provider>
   );
