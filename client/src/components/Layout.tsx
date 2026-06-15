@@ -114,9 +114,11 @@ export function Layout() {
 
   useEffect(() => {
     if (!user) return;
+    let active = true;
     const fetchChatUnread = () => {
       chatApi.getUnreadCount().then(({ data }) => {
-        const newCount = data.count;
+        if (!active) return;
+        const newCount = data.count ?? 0;
         if (newCount > prevChatUnreadRef.current && location.pathname !== '/chat') {
           try {
             if (Notification.permission === 'granted') {
@@ -133,7 +135,7 @@ export function Layout() {
     };
     fetchChatUnread();
     chatPollRef.current = setInterval(fetchChatUnread, 3000);
-    return () => { if (chatPollRef.current) clearInterval(chatPollRef.current); };
+    return () => { active = false; if (chatPollRef.current) clearInterval(chatPollRef.current); };
   }, [user, location.pathname, lang]);
 
   useEffect(() => {

@@ -88,6 +88,12 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
     setEditingCommentId(null);
     setEditCommentContent('');
     setCommentMenuId(null);
+    setComments([]);
+    setSubtasks([]);
+    setActivities([]);
+    setShowActivity(false);
+    setNewComment('');
+    setNewSubtask('');
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
@@ -102,6 +108,15 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       loadComments(task.id);
       loadSubtasks(task.id);
       loadActivities(task.id);
+    } else {
+      setTitle('');
+      setDescription('');
+      setStatus('TODO');
+      setPriority('MEDIUM');
+      setColor(null);
+      setAssigneeIds(new Set());
+      setAssigneeRoles({});
+      setDueDate('');
     }
   }, [task?.id]);
 
@@ -236,9 +251,10 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
   const selectedUsers = combinedUsers.filter((u) => assigneeIds.has(u.id));
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {task && (
         <motion.div
+          key={task.id}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -308,13 +324,13 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                     </div>
 
                     {editingDescription ? (
-                      <RichTextEditor content={description} onChange={setDescription} editable={true} />
+                      <RichTextEditor key={`edit-${task?.id}`} content={description} onChange={setDescription} editable={true} />
                     ) : (
                       <div
                         className="min-h-[120px] p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors prose prose-sm dark:prose-invert max-w-none"
-                        onClick={() => setEditingDescription(true)}
+                        onClick={() => canEdit ? setEditingDescription(true) : undefined}
                       >
-                        {description ? <RichTextViewer content={description} /> : <p className="text-sm text-slate-400 italic">{t.task.addDescription}</p>}
+                        {description ? <RichTextViewer key={`view-${task?.id}`} content={description} /> : <p className="text-sm text-slate-400 italic">{t.task.addDescription}</p>}
                       </div>
                     )}
                   </div>

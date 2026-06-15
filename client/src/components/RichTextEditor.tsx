@@ -13,7 +13,7 @@ import Color from '@tiptap/extension-color';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Heading1, Heading2, Heading3,
-  Quote, Code, Highlighter, Palette,
+  Quote, Code, Highlighter, Palette, PaintBucket,
   Table as TableIcon, ListChecks, Undo2, Redo2, Minus,
 } from 'lucide-react';
 import { useLang } from '../context/LangContext';
@@ -34,8 +34,39 @@ const HIGHLIGHT_COLORS = [
   '#FED7AA', '#99F6E4', '#E5E7EB',
 ];
 
+const CELL_BG_COLORS = [
+  '#FEF2F2', '#FFF7ED', '#FEFCE8', '#F0FDF4', '#ECFDF5',
+  '#F0F9FF', '#EFF6FF', '#F5F3FF', '#FDF2F8', '#F1F5F9',
+  '#FECACA', '#FED7AA', '#FEF08A', '#BBF7D0', '#BAE6FD',
+  '#C4B5FD', '#FBCFE8', '#E5E7EB',
+];
+
+const cellBgAttribute = {
+  backgroundColor: {
+    default: null,
+    parseHTML: (element: HTMLElement) => element.getAttribute('data-bg-color') || element.style.backgroundColor || null,
+    renderHTML: (attributes: Record<string, unknown>) => {
+      if (!attributes.backgroundColor) return {};
+      return { 'data-bg-color': attributes.backgroundColor, style: `background-color: ${attributes.backgroundColor}` };
+    },
+  },
+};
+
+const CustomTableCell = TableCell.extend({
+  addAttributes() {
+    return { ...this.parent?.(), ...cellBgAttribute };
+  },
+});
+
+const CustomTableHeader = TableHeader.extend({
+  addAttributes() {
+    return { ...this.parent?.(), ...cellBgAttribute };
+  },
+});
+
 function MenuBar({ editor }: { editor: Editor }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const he = lang === 'he';
 
   return (
     <div className="flex flex-wrap gap-0.5 p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
@@ -112,6 +143,15 @@ function MenuBar({ editor }: { editor: Editor }) {
             <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-400">-C</span>} onClick={() => editor.chain().focus().deleteColumn().run()} title={t.editor.deleteColumn} />
             <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-400">-R</span>} onClick={() => editor.chain().focus().deleteRow().run()} title={t.editor.deleteRow} />
             <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-500">×T</span>} onClick={() => editor.chain().focus().deleteTable().run()} title={t.editor.deleteTable} />
+            <Divider />
+            <ColorPicker
+              icon={<PaintBucket className="w-4 h-4" />}
+              colors={CELL_BG_COLORS}
+              onSelect={(color) => editor.chain().focus().setCellAttribute('backgroundColor', color).run()}
+              onClear={() => editor.chain().focus().setCellAttribute('backgroundColor', null).run()}
+              title={he ? 'צבע רקע תא' : 'Cell background'}
+              isHighlight
+            />
           </>
         )}
       </ToolGroup>
@@ -198,8 +238,8 @@ export function RichTextEditor({ content, onChange, editable = true }: RichTextE
       TaskItem.configure({ nested: true }),
       Table.configure({ resizable: true, lastColumnResizable: false }),
       TableRow,
-      TableCell,
-      TableHeader,
+      CustomTableCell,
+      CustomTableHeader,
       TextStyle,
       Color,
     ],
@@ -235,8 +275,8 @@ export function RichTextViewer({ content }: { content: string }) {
       TaskItem.configure({ nested: true }),
       Table.configure({ resizable: false }),
       TableRow,
-      TableCell,
-      TableHeader,
+      CustomTableCell,
+      CustomTableHeader,
       TextStyle,
       Color,
     ],

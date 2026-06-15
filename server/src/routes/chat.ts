@@ -33,12 +33,11 @@ chatRouter.get('/channels', async (req: AuthRequest, res: Response, next) => {
       });
     }
 
-    const isMember = await prisma.chatMember.findUnique({
+    await prisma.chatMember.upsert({
       where: { channelId_userId: { channelId: generalChannel.id, userId } },
+      create: { channelId: generalChannel.id, userId },
+      update: {},
     });
-    if (!isMember) {
-      await prisma.chatMember.create({ data: { channelId: generalChannel.id, userId } });
-    }
 
     const channels = await prisma.chatChannel.findMany({
       where: {
@@ -204,10 +203,7 @@ chatRouter.get('/channels/:id/messages', async (req: AuthRequest, res: Response,
       take: limit,
     });
 
-    await prisma.chatMember.updateMany({
-      where: { channelId: id, userId: req.userId! },
-      data: { lastRead: new Date() },
-    });
+    await prisma.$executeRaw`UPDATE "ChatMember" SET "lastRead" = NOW() WHERE "channelId" = ${id} AND "userId" = ${req.userId!}`;
 
     res.json({ messages: messages.reverse(), total, page, hasMore: page * limit < total });
   } catch (err) { next(err); }
@@ -682,14 +678,13 @@ chatRouter.get('/unread-count', async (req: AuthRequest, res: Response, next) =>
   try {
     const userId = req.userId!;
 
-    let generalChannel = await prisma.chatChannel.findFirst({ where: { isGeneral: true } });
+    const generalChannel = await prisma.chatChannel.findFirst({ where: { isGeneral: true } });
     if (generalChannel) {
-      const isMember = await prisma.chatMember.findUnique({
+      await prisma.chatMember.upsert({
         where: { channelId_userId: { channelId: generalChannel.id, userId } },
+        create: { channelId: generalChannel.id, userId },
+        update: {},
       });
-      if (!isMember) {
-        await prisma.chatMember.create({ data: { channelId: generalChannel.id, userId } });
-      }
     }
 
     const memberships = await prisma.chatMember.findMany({
@@ -697,20 +692,25 @@ chatRouter.get('/unread-count', async (req: AuthRequest, res: Response, next) =>
       select: { channelId: true, lastRead: true },
     });
 
-    let total = 0;
-    for (const m of memberships) {
-      const count = await prisma.chatMessage.count({
-        where: {
-          channelId: m.channelId,
-          createdAt: { gt: m.lastRead },
-          authorId: { not: userId },
-          isDeleted: false,
-        },
-      });
-      total += count;
+    if (memberships.length === 0) {
+      res.json({ count: 0 });
+      return;
     }
 
-    res.json({ count: total });
+    const counts = await Promise.all(
+      memberships.map((m) =>
+        prisma.chatMessage.count({
+          where: {
+            channelId: m.channelId,
+            createdAt: { gt: m.lastRead },
+            authorId: { not: userId },
+            isDeleted: false,
+          },
+        })
+      )
+    );
+
+    res.json({ count: counts.reduce((a, b) => a + b, 0) });
   } catch (err) { next(err); }
 });
 
