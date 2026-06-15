@@ -189,7 +189,7 @@ authRouter.post('/forgot-password', async (req, res: Response, next) => {
 authRouter.put('/admin-reset-password', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
     const admin = await prisma.user.findUnique({ where: { id: req.userId } });
-    if (!admin || (admin.globalRole !== 'ADMIN' && admin.globalRole !== 'SUPER_ADMIN')) {
+    if (!admin || admin.globalRole !== 'SUPER_ADMIN') {
       throw new AppError('Forbidden', 403);
     }
 

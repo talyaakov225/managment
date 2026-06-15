@@ -291,7 +291,7 @@ export function AdminUsers() {
                         </div>
                       )}
 
-                      {(currentUser?.globalRole === 'SUPER_ADMIN' || currentUser?.globalRole === 'ADMIN') && u.id !== currentUser.id && (
+                      {currentUser?.globalRole === 'SUPER_ADMIN' && u.id !== currentUser.id && (
                         <button
                           onClick={() => { setResetUser(u); setNewPassword(''); setShowResetModal(true); }}
                           className="btn-ghost p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30"

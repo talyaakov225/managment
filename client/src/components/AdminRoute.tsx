@@ -7,7 +7,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.globalRole !== 'ADMIN' && user.globalRole !== 'SUPER_ADMIN') {
+  if (user.globalRole !== 'SUPER_ADMIN') {
     return <Navigate to="/dashboard" replace />;
   }
 

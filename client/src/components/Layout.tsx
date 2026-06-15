@@ -38,7 +38,7 @@ export function Layout() {
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const isAdmin = user?.globalRole === 'ADMIN' || user?.globalRole === 'SUPER_ADMIN';
+  const isAdmin = user?.globalRole === 'SUPER_ADMIN';
   const { unreadCount, notifications, markAllRead } = useNotification();
   const [chatUnread, setChatUnread] = useState(0);
   const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);

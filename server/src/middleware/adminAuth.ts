@@ -7,7 +7,7 @@ export function requireAdmin(req: AuthRequest, _res: Response, next: NextFunctio
   if (!req.userId || !req.globalRole) {
     throw new AppError('Authentication required', 401);
   }
-  if (req.globalRole !== 'ADMIN' && req.globalRole !== 'SUPER_ADMIN') {
+  if (req.globalRole !== 'SUPER_ADMIN') {
     throw new AppError('Admin access required', 403);
   }
   next();
