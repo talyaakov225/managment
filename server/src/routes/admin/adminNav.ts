@@ -29,6 +29,29 @@ adminNavRouter.post('/', async (req: AuthRequest, res: Response, next) => {
       requiredPermission: z.string().nullable().optional(),
     });
     const data = schema.parse(req.body);
+
+    let createdPageId: string | null = null;
+
+    const pageMatch = data.href.match(/^\/pages\/([a-z0-9-]+)$/i);
+    if (pageMatch) {
+      const slug = pageMatch[1].toLowerCase();
+      const existing = await prisma.customPage.findUnique({ where: { slug } });
+      if (!existing) {
+        const page = await prisma.customPage.create({
+          data: {
+            slug,
+            title_he: data.label_he,
+            title_en: data.label_en,
+            isPublished: true,
+          },
+        });
+        createdPageId = page.id;
+        await createAuditLog(req.userId!, 'page.auto_create', 'CustomPage', page.id, { slug, fromNav: true }, getClientIp(req));
+      } else {
+        createdPageId = existing.id;
+      }
+    }
+
     const maxPos = await prisma.navItem.findFirst({
       where: { parentId: data.parentId || null },
       orderBy: { position: 'desc' },
@@ -39,7 +62,7 @@ adminNavRouter.post('/', async (req: AuthRequest, res: Response, next) => {
       include: { children: true },
     });
     await createAuditLog(req.userId!, 'nav.create', 'NavItem', item.id, data, getClientIp(req));
-    res.status(201).json(item);
+    res.status(201).json({ ...item, _createdPageId: createdPageId });
   } catch (err) { next(err); }
 });
 

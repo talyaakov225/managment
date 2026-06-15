@@ -75,7 +75,10 @@ export function AdminSettings() {
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.admin.systemSettings}</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.admin.systemSettings}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.admin.settingsDesc}</p>
+          </div>
           <button onClick={() => setShowCreate(true)} className="btn-primary">
             <Plus className="w-4 h-4" />{t.admin.addSetting}
           </button>

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Sun, Moon, Monitor, Save, Loader2, Languages } from 'lucide-react';
+import { User, Lock, Sun, Moon, Monitor, Save, Loader2, Languages, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLang } from '../context/LangContext';
@@ -15,11 +15,37 @@ export function SettingsPage() {
 
   const [name, setName] = useState(user?.name || '');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(lang === 'he' ? 'הקובץ גדול מדי (מקסימום 2MB)' : 'File too large (max 2MB)');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const { data } = await authApi.updateProfile({ avatar: base64 });
+        updateUser(data);
+        toast.success(lang === 'he' ? 'תמונת הפרופיל עודכנה' : 'Avatar updated');
+        setUploadingAvatar(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      toast.error(lang === 'he' ? 'שגיאה בהעלאת תמונה' : 'Upload failed');
+      setUploadingAvatar(false);
+    }
+  }
 
   async function handleSaveProfile() {
     if (!name.trim()) return;
@@ -63,10 +89,57 @@ export function SettingsPage() {
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t.settings.profile}</h2>
           </div>
           <div className="flex items-center gap-4 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-            {user && <Avatar name={user.name} size="lg" />}
+            <div className="relative group">
+              {user && <Avatar name={user.name} avatar={user.avatar} size="xl" />}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+              >
+                {uploadingAvatar ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <Camera className="w-5 h-5 text-white" />
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </div>
             <div>
               <p className="font-medium text-slate-900 dark:text-white">{user?.name}</p>
               <p className="text-sm text-slate-500">{user?.email}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  {lang === 'he' ? 'שנה תמונה' : 'Change photo'}
+                </button>
+                {user?.avatar && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">|</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data } = await authApi.updateProfile({ avatar: '' });
+                          updateUser(data);
+                          toast.success(lang === 'he' ? 'התמונה הוסרה' : 'Photo removed');
+                        } catch {
+                          toast.error(lang === 'he' ? 'שגיאה בהסרת התמונה' : 'Failed to remove photo');
+                        }
+                      }}
+                      className="text-xs text-red-500 hover:text-red-600 font-medium"
+                    >
+                      {lang === 'he' ? 'הסר תמונה' : 'Remove photo'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="space-y-4">

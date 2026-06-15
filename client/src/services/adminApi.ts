@@ -23,7 +23,7 @@ export const adminUsersApi = {
 export const adminRolesApi = {
   getAll: () => api.get<AdminRole[]>('/admin/roles'),
   getPermissions: () => api.get<Permission[]>('/admin/roles/permissions'),
-  create: (data: { name: string; displayName: string; color?: string }) =>
+  create: (data: { name: string; displayName: string; color?: string; permissionIds?: string[] }) =>
     api.post<AdminRole>('/admin/roles', data),
   update: (id: string, data: { displayName?: string; color?: string }) =>
     api.put<AdminRole>(`/admin/roles/${id}`, data),
@@ -47,6 +47,12 @@ export const adminBoardApi = {
   createCategory: (data: { name: string; color?: string }) => api.post<Category>('/admin/board/categories', data),
   updateCategory: (id: string, data: Partial<Category>) => api.put<Category>(`/admin/board/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete(`/admin/board/categories/${id}`),
+};
+
+export const adminProjectsApi = {
+  getAll: () => api.get<Array<{ id: string; name: string; description: string | null; ownerId: string; owner: { id: string; name: string; email: string }; _count: { tasks: number; members: number }; createdAt: string; updatedAt: string }>>('/admin/projects'),
+  update: (id: string, data: { name?: string; description?: string | null }) => api.put(`/admin/projects/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/projects/${id}`),
 };
 
 export const adminNavApi = {
@@ -81,6 +87,17 @@ export const adminAuditApi = {
     api.get<{ logs: AuditLog[]; total: number; page: number; totalPages: number }>(
       '/admin/audit-logs', { params }
     ),
+};
+
+export const adminChatApi = {
+  getStats: () => api.get<{
+    channels: { id: string; name: string; isGeneral: boolean; createdAt: string; _count: { messages: number; members: number } }[];
+    totalMessages: number;
+    totalAttachments: number;
+  }>('/admin/chat/stats'),
+  clearChannel: (channelId: string) => api.delete<{ deleted: number }>(`/admin/chat/channels/${channelId}/messages`),
+  clearAll: () => api.delete<{ deleted: number }>('/admin/chat/messages/all'),
+  deleteChannel: (channelId: string) => api.delete(`/admin/chat/channels/${channelId}`),
 };
 
 export const boardPublicApi = {

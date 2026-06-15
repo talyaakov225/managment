@@ -31,17 +31,24 @@ export interface ProjectMember {
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+export interface TaskAssignee {
+  userId: string;
+  user: User;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  color: string | null;
   position: number;
   dueDate: string | null;
   projectId: string;
-  assigneeId: string | null;
-  assignee: User | null;
+  creatorId: string | null;
+  creator: User | null;
+  assignees: TaskAssignee[];
   project?: { id: string; name: string };
   comments?: Comment[];
   _count?: { comments: number };

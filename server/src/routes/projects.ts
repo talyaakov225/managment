@@ -11,12 +11,6 @@ projectRouter.use(authenticate);
 projectRouter.get('/', async (req: AuthRequest, res: Response, next) => {
   try {
     const projects = await prisma.project.findMany({
-      where: {
-        OR: [
-          { ownerId: req.userId },
-          { members: { some: { userId: req.userId } } },
-        ],
-      },
       include: {
         owner: { select: { id: true, name: true, email: true, avatar: true } },
         members: {
@@ -38,13 +32,7 @@ projectRouter.get('/', async (req: AuthRequest, res: Response, next) => {
 projectRouter.get('/:id', async (req: AuthRequest, res: Response, next) => {
   try {
     const project = await prisma.project.findFirst({
-      where: {
-        id: req.params.id,
-        OR: [
-          { ownerId: req.userId },
-          { members: { some: { userId: req.userId } } },
-        ],
-      },
+      where: { id: req.params.id },
       include: {
         owner: { select: { id: true, name: true, email: true, avatar: true } },
         members: {

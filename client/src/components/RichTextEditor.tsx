@@ -107,9 +107,11 @@ function MenuBar({ editor }: { editor: Editor }) {
         />
         {editor.isActive('table') && (
           <>
-            <ToolBtn icon={<span className="text-xs font-bold">+C</span>} onClick={() => editor.chain().focus().addColumnAfter().run()} title={t.editor.addColumn} />
-            <ToolBtn icon={<span className="text-xs font-bold">+R</span>} onClick={() => editor.chain().focus().addRowAfter().run()} title={t.editor.addRow} />
-            <ToolBtn icon={<span className="text-xs font-bold text-red-500">×T</span>} onClick={() => editor.chain().focus().deleteTable().run()} title={t.editor.deleteTable} />
+            <ToolBtn icon={<span className="text-[10px] font-bold leading-none">+C</span>} onClick={() => editor.chain().focus().addColumnAfter().run()} title={t.editor.addColumn} />
+            <ToolBtn icon={<span className="text-[10px] font-bold leading-none">+R</span>} onClick={() => editor.chain().focus().addRowAfter().run()} title={t.editor.addRow} />
+            <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-400">-C</span>} onClick={() => editor.chain().focus().deleteColumn().run()} title={t.editor.deleteColumn} />
+            <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-400">-R</span>} onClick={() => editor.chain().focus().deleteRow().run()} title={t.editor.deleteRow} />
+            <ToolBtn icon={<span className="text-[10px] font-bold leading-none text-red-500">×T</span>} onClick={() => editor.chain().focus().deleteTable().run()} title={t.editor.deleteTable} />
           </>
         )}
       </ToolGroup>
@@ -194,7 +196,7 @@ export function RichTextEditor({ content, onChange, editable = true }: RichTextE
       Highlight.configure({ multicolor: true }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: true }),
+      Table.configure({ resizable: true, lastColumnResizable: false }),
       TableRow,
       TableCell,
       TableHeader,
@@ -213,10 +215,12 @@ export function RichTextEditor({ content, onChange, editable = true }: RichTextE
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       {editable && <MenuBar editor={editor} />}
-      <EditorContent
-        editor={editor}
-        className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[120px] focus:outline-none ${editable ? '' : 'cursor-default'}`}
-      />
+      <div className="overflow-x-auto">
+        <EditorContent
+          editor={editor}
+          className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[120px] focus:outline-none [&_table]:text-[13px] ${editable ? '' : 'cursor-default'}`}
+        />
+      </div>
     </div>
   );
 }
@@ -243,9 +247,11 @@ export function RichTextViewer({ content }: { content: string }) {
   if (!editor) return null;
 
   return (
-    <EditorContent
-      editor={editor}
-      className="prose prose-sm dark:prose-invert max-w-none"
-    />
+    <div className="overflow-x-auto">
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm dark:prose-invert max-w-none [&_table]:text-[13px]"
+      />
+    </div>
   );
 }

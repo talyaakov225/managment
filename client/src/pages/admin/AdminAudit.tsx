@@ -33,7 +33,10 @@ export function AdminAudit() {
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">{t.admin.auditLog}</h1>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.admin.auditLog}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.admin.auditLogDesc}</p>
+        </div>
 
         <div className="card p-4 mb-6">
           <div className="flex flex-wrap gap-3">

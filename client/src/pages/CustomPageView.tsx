@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FileX } from 'lucide-react';
 import { navPublicApi } from '../services/adminApi';
+import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import type { CustomPage } from '../types/admin';
 
 export function CustomPageView() {
   const { slug } = useParams<{ slug: string }>();
   const { lang } = useLang();
+  const { user } = useAuth();
+  const isAdmin = user?.globalRole === 'ADMIN' || user?.globalRole === 'SUPER_ADMIN';
   const [page, setPage] = useState<CustomPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -16,7 +20,7 @@ export function CustomPageView() {
     if (!slug) return;
     setLoading(true);
     setError(false);
-    navPublicApi.getPage(slug)
+    navPublicApi.getPage(slug.toLowerCase())
       .then((res) => setPage(res.data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -33,7 +37,18 @@ export function CustomPageView() {
   if (error || !page) {
     return (
       <div className="p-6 lg:p-8 max-w-4xl mx-auto text-center py-20">
-        <p className="text-slate-500">Page not found</p>
+        <FileX className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+        <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
+          {lang === 'he' ? 'הדף לא נמצא' : 'Page not found'}
+        </p>
+        <p className="text-sm text-slate-400 mb-6">
+          {lang === 'he' ? `הדף "${slug}" לא קיים או לא פורסם עדיין.` : `The page "${slug}" does not exist or is not published yet.`}
+        </p>
+        {isAdmin && (
+          <Link to="/admin/pages" className="btn-primary inline-flex items-center gap-2">
+            {lang === 'he' ? 'צור דף חדש בפאנל הניהול' : 'Create page in Admin Panel'}
+          </Link>
+        )}
       </div>
     );
   }

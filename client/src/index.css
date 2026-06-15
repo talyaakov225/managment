@@ -63,7 +63,7 @@
   }
 
   .card-hover {
-    @apply card hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200;
+    @apply card relative overflow-hidden hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200;
   }
 }
 
@@ -102,14 +102,24 @@
   accent-color: #6366f1;
 }
 
+.tiptap .tableWrapper {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .tiptap .tableWrapper {
+  border-color: #334155;
+}
+
 .tiptap table {
   border-collapse: collapse;
   width: 100%;
-  margin: 0.75rem 0;
-  table-layout: fixed;
-  overflow: hidden;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
+  table-layout: auto;
+  overflow: visible;
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }
 
 .dark .tiptap table {
@@ -119,10 +129,13 @@
 .tiptap th,
 .tiptap td {
   border: 1px solid #e2e8f0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
   text-align: start;
   vertical-align: top;
-  min-width: 80px;
+  min-width: 60px;
+  max-width: 300px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
   position: relative;
 }
 
@@ -134,11 +147,20 @@
 .tiptap th {
   background-color: #f1f5f9;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0.35rem 0.6rem;
 }
 
 .dark .tiptap th {
   background-color: #1e293b;
+}
+
+.tiptap td p,
+.tiptap th p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .tiptap .selectedCell::after {
@@ -147,6 +169,17 @@
   inset: 0;
   background: rgba(99, 102, 241, 0.1);
   pointer-events: none;
+}
+
+.tiptap .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: -2px;
+  inset-inline-end: -2px;
+  width: 4px;
+  background-color: #6366f1;
+  pointer-events: auto;
+  cursor: col-resize;
 }
 
 .tiptap blockquote {

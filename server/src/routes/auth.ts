@@ -128,10 +128,13 @@ authRouter.put('/profile', authenticate, async (req: AuthRequest, res: Response,
     });
 
     const data = schema.parse(req.body);
+    if (data.avatar === '') data.avatar = undefined;
+    const updateData: Record<string, unknown> = { ...data };
+    if (req.body.avatar === '') updateData.avatar = null;
 
     const user = await prisma.user.update({
       where: { id: req.userId },
-      data,
+      data: updateData,
       select: { id: true, name: true, email: true, avatar: true, globalRole: true, createdAt: true },
     });
 

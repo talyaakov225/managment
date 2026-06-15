@@ -16,11 +16,13 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminRoles } from './pages/admin/AdminRoles';
 import { AdminBoard } from './pages/admin/AdminBoard';
+import { AdminProjects } from './pages/admin/AdminProjects';
 import { AdminNav } from './pages/admin/AdminNav';
 import { AdminPages } from './pages/admin/AdminPages';
 import { PageBlockEditor } from './pages/admin/PageBlockEditor';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminAudit } from './pages/admin/AdminAudit';
+import { AdminChat } from './pages/admin/AdminChat';
 import { LoadingScreen } from './components/LoadingScreen';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -56,12 +58,14 @@ export default function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="roles" element={<AdminRoles />} />
+        <Route path="projects" element={<AdminProjects />} />
         <Route path="board" element={<AdminBoard />} />
         <Route path="navigation" element={<AdminNav />} />
         <Route path="pages" element={<AdminPages />} />
         <Route path="pages/:id/edit" element={<PageBlockEditor />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="audit" element={<AdminAudit />} />
+        <Route path="chat" element={<AdminChat />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

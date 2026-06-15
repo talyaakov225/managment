@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Shield, Trash2, ChevronDown, CheckCircle2, XCircle, Clock, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,8 +20,22 @@ export function AdminUsers() {
   const [pendingCount, setPendingCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [openRoleDropdown, setOpenRoleDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [filter]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenRoleDropdown(null);
+      }
+    }
+    if (openRoleDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openRoleDropdown]);
 
   async function load() {
     setLoading(true);
@@ -96,7 +110,10 @@ export function AdminUsers() {
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.admin.userManagement}</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.admin.userManagement}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.admin.usersDesc}</p>
+          </div>
           <span className="text-sm text-slate-400">{users.length} {t.admin.users}</span>
         </div>
 
@@ -226,22 +243,27 @@ export function AdminUsers() {
                       </button>
 
                       {currentUser?.globalRole === 'SUPER_ADMIN' && (
-                        <div className="relative group">
-                          <button className={`text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1 ${roleColors[u.globalRole] || roleColors.USER}`}>
+                        <div className="relative" ref={openRoleDropdown === u.id ? dropdownRef : undefined}>
+                          <button
+                            onClick={() => setOpenRoleDropdown(openRoleDropdown === u.id ? null : u.id)}
+                            className={`text-xs px-2.5 py-1.5 rounded-lg font-medium flex items-center gap-1 ${roleColors[u.globalRole] || roleColors.USER}`}
+                          >
                             {u.globalRole}
-                            <ChevronDown className="w-3 h-3" />
+                            <ChevronDown className={`w-3 h-3 transition-transform ${openRoleDropdown === u.id ? 'rotate-180' : ''}`} />
                           </button>
-                          <div className="absolute end-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10 hidden group-hover:block min-w-[140px]">
-                            {['USER', 'ADMIN', 'SUPER_ADMIN'].map((role) => (
-                              <button
-                                key={role}
-                                onClick={() => handleGlobalRoleChange(u.id, role)}
-                                className={`w-full text-start px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${u.globalRole === role ? 'font-bold text-primary-600' : 'text-slate-700 dark:text-slate-300'}`}
-                              >
-                                {role}
-                              </button>
-                            ))}
-                          </div>
+                          {openRoleDropdown === u.id && (
+                            <div className="absolute end-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10 min-w-[140px]">
+                              {['USER', 'ADMIN', 'SUPER_ADMIN'].map((role) => (
+                                <button
+                                  key={role}
+                                  onClick={() => { handleGlobalRoleChange(u.id, role); setOpenRoleDropdown(null); }}
+                                  className={`w-full text-start px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${u.globalRole === role ? 'font-bold text-primary-600' : 'text-slate-700 dark:text-slate-300'}`}
+                                >
+                                  {role}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 

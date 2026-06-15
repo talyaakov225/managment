@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { User, Project, Task, DashboardStats, ProjectMember, Comment } from '../types';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -72,12 +72,12 @@ export const taskApi = {
   getById: (id: string) => api.get<Task>(`/tasks/${id}`),
   create: (projectId: string, data: Partial<Task>) =>
     api.post<Task>(`/projects/${projectId}/tasks`, data),
-  update: (id: string, data: Partial<Task>) => api.put<Task>(`/tasks/${id}`, data),
+  update: (id: string, data: Record<string, unknown>) => api.put<Task>(`/tasks/${id}`, data),
   updatePosition: (id: string, data: { status: string; position: number }) =>
     api.patch<Task>(`/tasks/${id}/position`, data),
   delete: (id: string) => api.delete(`/tasks/${id}`),
   getDashboard: () => api.get<DashboardStats>('/tasks/dashboard/stats'),
-  getHistory: (params?: { status?: string; priority?: string; projectId?: string; assigneeId?: string; search?: string; page?: number }) =>
+  getHistory: (params?: { status?: string; priority?: string; projectId?: string; search?: string; page?: number }) =>
     api.get<{ tasks: Task[]; total: number; page: number; totalPages: number }>('/tasks/history', { params }),
 };
 
@@ -93,7 +93,100 @@ export const commentApi = {
   getByTask: (taskId: string) => api.get<Comment[]>(`/tasks/${taskId}/comments`),
   create: (taskId: string, data: { content: string }) =>
     api.post<Comment>(`/tasks/${taskId}/comments`, data),
+  update: (commentId: string, data: { content: string }) =>
+    api.put<Comment>(`/tasks/comments/${commentId}`, data),
+  delete: (commentId: string) =>
+    api.delete(`/tasks/comments/${commentId}`),
 };
+
+// ── Subtasks ──
+
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+  position: number;
+  taskId: string;
+  createdAt: string;
+}
+
+export const subtaskApi = {
+  getByTask: (taskId: string) => api.get<Subtask[]>(`/tasks/${taskId}/subtasks`),
+  create: (taskId: string, data: { title: string }) =>
+    api.post<Subtask>(`/tasks/${taskId}/subtasks`, data),
+  update: (id: string, data: { title?: string; completed?: boolean }) =>
+    api.put<Subtask>(`/tasks/subtasks/${id}`, data),
+  delete: (id: string) => api.delete(`/tasks/subtasks/${id}`),
+};
+
+// ── Task Activity ──
+
+export interface TaskActivity {
+  id: string;
+  action: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+  user: { id: string; name: string; avatar: string | null };
+}
+
+export const taskActivityApi = {
+  getByTask: (taskId: string) => api.get<TaskActivity[]>(`/tasks/${taskId}/activity`),
+};
+
+// ── Favorites ──
+
+export interface Favorite {
+  id: string;
+  projectId: string | null;
+  project: { id: string; name: string; description: string | null } | null;
+  createdAt: string;
+}
+
+export const favoriteApi = {
+  getAll: () => api.get<Favorite[]>('/favorites'),
+  toggle: (projectId: string) => api.post<{ favorited: boolean }>('/favorites/toggle', { projectId }),
+};
+
+// ── Chat Types ──
+
+export interface MessageAttachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+}
+
+export interface MessageReaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  user: { id: string; name: string };
+}
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  type: string;
+  editedAt: string | null;
+  isDeleted: boolean;
+  isPinned: boolean;
+  pinnedAt: string | null;
+  pinnedBy: { id: string; name: string } | null;
+  createdAt: string;
+  channelId: string;
+  authorId: string;
+  author: { id: string; name: string; avatar: string | null };
+  taskId: string | null;
+  task: { id: string; title: string; status: string; projectId: string } | null;
+  replyToId: string | null;
+  replyTo: { id: string; content: string; author: { id: string; name: string } } | null;
+  reactions: MessageReaction[];
+  attachments: MessageAttachment[];
+}
 
 export interface ChatChannel {
   id: string;
@@ -102,22 +195,32 @@ export interface ChatChannel {
   isGeneral: boolean;
   createdAt: string;
   updatedAt: string;
-  members: { userId: string; user: { id: string; name: string; avatar: string | null } }[];
+  members: { userId: string; user: { id: string; name: string; avatar: string | null }; lastRead?: string }[];
   messages: ChatMessage[];
   _count: { messages: number };
   unreadCount: number;
 }
 
-export interface ChatMessage {
+export interface ChatSearchResult {
   id: string;
   content: string;
   createdAt: string;
-  channelId: string;
-  authorId: string;
   author: { id: string; name: string; avatar: string | null };
-  taskId: string | null;
-  task: { id: string; title: string; status: string; projectId: string } | null;
+  channel: { id: string; name: string; isGeneral: boolean };
 }
+
+export interface TypingUser {
+  userId: string;
+  name: string;
+}
+
+export interface ReadStatusMember {
+  userId: string;
+  lastRead: string;
+  user: { name: string };
+}
+
+// ── Chat API ──
 
 export const chatApi = {
   getChannels: () => api.get<ChatChannel[]>('/chat/channels'),
@@ -125,12 +228,95 @@ export const chatApi = {
     api.post<ChatChannel>('/chat/channels', data),
   createDirect: (targetUserId: string) =>
     api.post<ChatChannel>('/chat/channels/direct', { targetUserId }),
+  updateChannel: (id: string, data: { name?: string; description?: string }) =>
+    api.put('/chat/channels/' + id, data),
+  deleteChannel: (id: string) => api.delete('/chat/channels/' + id),
+
   getMessages: (channelId: string, page?: number) =>
-    api.get<ChatMessage[]>(`/chat/channels/${channelId}/messages`, { params: { page } }),
-  sendMessage: (channelId: string, data: { content: string; taskId?: string }) =>
+    api.get<{ messages: ChatMessage[]; total: number; page: number; hasMore: boolean }>(
+      `/chat/channels/${channelId}/messages`, { params: { page } }
+    ),
+  sendMessage: (channelId: string, data: { content: string; taskId?: string; replyToId?: string }) =>
     api.post<ChatMessage>(`/chat/channels/${channelId}/messages`, data),
-  getUsers: () => api.get<User[]>('/chat/users'),
+  sendMessageWithFiles: (channelId: string, data: { content: string; taskId?: string; replyToId?: string; attachments?: MessageAttachment[] }) =>
+    api.post<ChatMessage>(`/chat/channels/${channelId}/messages-with-files`, data),
+  editMessage: (id: string, content: string) =>
+    api.put<ChatMessage>(`/chat/messages/${id}`, { content }),
+  deleteMessage: (id: string) => api.delete(`/chat/messages/${id}`),
+
+  toggleReaction: (messageId: string, emoji: string) =>
+    api.post<{ action: string }>(`/chat/messages/${messageId}/reactions`, { emoji }),
+  togglePin: (id: string) => api.put<ChatMessage>(`/chat/messages/${id}/pin`),
+  getPinned: (channelId: string) => api.get<ChatMessage[]>(`/chat/channels/${channelId}/pinned`),
+
+  getMembers: (channelId: string) => api.get(`/chat/channels/${channelId}/members`),
+  addMember: (channelId: string, userId: string) =>
+    api.post(`/chat/channels/${channelId}/members`, { userId }),
+  removeMember: (channelId: string, userId: string) =>
+    api.delete(`/chat/channels/${channelId}/members/${userId}`),
+
+  search: (q: string, channelId?: string) =>
+    api.get<ChatSearchResult[]>('/chat/search', { params: { q, channelId } }),
+
+  sendTyping: (channelId: string) => api.post(`/chat/channels/${channelId}/typing`),
+  getTyping: (channelId: string) => api.get<TypingUser[]>(`/chat/channels/${channelId}/typing`),
+
+  heartbeat: () => api.post('/chat/heartbeat'),
+  getPresence: () => api.get<Record<string, boolean>>('/chat/presence'),
+
+  getReadStatus: (channelId: string) => api.get<ReadStatusMember[]>(`/chat/channels/${channelId}/read-status`),
+
+  uploadFiles: (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    return api.post<Array<{ filename: string; originalName: string; mimeType: string; size: number; url: string }>>(
+      '/chat/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+  },
+
+  getUsers: () => api.get<(User & { lastSeen?: string })[]>('/chat/users'),
   getUnreadCount: () => api.get<{ count: number }>('/chat/unread-count'),
+  getReminders: () => api.get('/chat/reminders'),
+};
+
+// ── Sticky Notes ──
+
+export interface StickyNote {
+  id: string;
+  content: string;
+  color: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const stickyNoteApi = {
+  getAll: () => api.get<StickyNote[]>('/sticky-notes'),
+  create: (data: { content?: string; color?: string }) => api.post<StickyNote>('/sticky-notes', data),
+  update: (id: string, data: Partial<StickyNote>) => api.put<StickyNote>(`/sticky-notes/${id}`, data),
+  delete: (id: string) => api.delete(`/sticky-notes/${id}`),
+};
+
+// ── Reminders ──
+
+export interface ReminderItem {
+  id: string;
+  title: string;
+  content: string | null;
+  color: string;
+  triggerAt: string;
+  triggered: boolean;
+  dismissed: boolean;
+  createdAt: string;
+}
+
+export const reminderApi = {
+  getAll: () => api.get<ReminderItem[]>('/reminders'),
+  getDue: () => api.get<ReminderItem[]>('/reminders/due'),
+  create: (data: { title: string; content?: string; color?: string; triggerAt: string }) =>
+    api.post<ReminderItem>('/reminders', data),
+  dismiss: (id: string) => api.put<ReminderItem>(`/reminders/${id}/dismiss`),
+  delete: (id: string) => api.delete(`/reminders/${id}`),
 };
 
 export default api;

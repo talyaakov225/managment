@@ -19,8 +19,9 @@ navPublicRouter.get('/', async (_req: AuthRequest, res: Response, next) => {
 
 navPublicRouter.get('/pages/:slug', async (req: AuthRequest, res: Response, next) => {
   try {
+    const slug = req.params.slug.toLowerCase();
     const page = await prisma.customPage.findUnique({
-      where: { slug: req.params.slug, isPublished: true },
+      where: { slug, isPublished: true },
       include: { blocks: { orderBy: { position: 'asc' } } },
     });
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }

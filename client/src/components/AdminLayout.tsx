@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Shield, Kanban, Navigation, FileText,
   Settings, ClipboardList, ArrowRight, ArrowLeft, ChevronLeft,
-  ChevronRight, Menu, X,
+  ChevronRight, Menu, X, FolderKanban, MessageCircle,
 } from 'lucide-react';
 import { useLang } from '../context/LangContext';
 import { adminUsersApi } from '../services/adminApi';
@@ -17,7 +17,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export function AdminLayout() {
-  const { t, isRTL } = useLang();
+  const { t, isRTL, lang } = useLang();
+  const he = lang === 'he';
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -36,10 +37,12 @@ export function AdminLayout() {
     { to: '/admin', icon: LayoutDashboard, label: t.admin.dashboard, end: true, badge: 0 },
     { to: '/admin/users', icon: Users, label: t.admin.users, badge: pendingCount },
     { to: '/admin/roles', icon: Shield, label: t.admin.roles, badge: 0 },
+    { to: '/admin/projects', icon: FolderKanban, label: he ? 'פרויקטים' : 'Projects', badge: 0 },
     { to: '/admin/board', icon: Kanban, label: t.admin.boardConfig, badge: 0 },
     { to: '/admin/navigation', icon: Navigation, label: t.admin.navigation, badge: 0 },
     { to: '/admin/pages', icon: FileText, label: t.admin.pages, badge: 0 },
     { to: '/admin/settings', icon: Settings, label: t.admin.settings, badge: 0 },
+    { to: '/admin/chat', icon: MessageCircle, label: he ? 'ניהול צ׳אט' : 'Chat Management', badge: 0 },
     { to: '/admin/audit', icon: ClipboardList, label: t.admin.auditLog, badge: 0 },
   ];
 
