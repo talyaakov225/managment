@@ -51,13 +51,6 @@ npm run dev
 
 The app will be available at **http://localhost:5173**
 
-### Demo Accounts
-
-| Email | Password |
-|---|---|
-| admin@taskflow.com | password123 |
-| member@taskflow.com | password123 |
-
 ## Features
 
 - **Authentication** - Register, login, JWT tokens, password management
