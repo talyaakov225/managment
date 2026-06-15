@@ -31,9 +31,12 @@ export interface ProjectMember {
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+export type TaskAssigneeRole = 'EDITOR' | 'VIEWER';
+
 export interface TaskAssignee {
   userId: string;
   user: User;
+  role: TaskAssigneeRole;
 }
 
 export interface Task {

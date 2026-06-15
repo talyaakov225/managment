@@ -113,6 +113,7 @@ model TaskAssignee {
   task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String   @default("EDITOR")
   assignedAt DateTime @default(now())
 
   @@id([taskId, userId])

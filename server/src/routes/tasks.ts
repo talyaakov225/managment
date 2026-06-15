@@ -145,6 +145,7 @@ taskRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
       priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
       color: z.string().nullable().optional(),
       assigneeIds: z.array(z.string()).optional(),
+      assigneeRoles: z.record(z.string(), z.enum(['EDITOR', 'VIEWER'])).optional(),
       dueDate: z.string().nullable().optional(),
     });
 
@@ -152,13 +153,20 @@ taskRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
 
     const task = await prisma.task.findUnique({
       where: { id: req.params.id },
-      include: { assignees: { select: { userId: true } } },
+      include: { assignees: { select: { userId: true, role: true } } },
     });
     if (!task) throw new AppError('Task not found', 404);
 
     await verifyProjectAccess(task.projectId, req.userId!);
 
-    const { assigneeIds, ...taskFields } = data;
+    const myAssignment = task.assignees.find(a => a.userId === req.userId);
+    const isCreator = task.creatorId === req.userId;
+    const isViewer = myAssignment?.role === 'VIEWER' && !isCreator;
+    if (isViewer && !data.assigneeIds && !data.assigneeRoles) {
+      throw new AppError('You have view-only access to this task', 403);
+    }
+
+    const { assigneeIds, assigneeRoles, ...taskFields } = data;
 
     const changes: { field: string; oldValue: string | null; newValue: string | null }[] = [];
     if (data.status && data.status !== task.status) changes.push({ field: 'status', oldValue: task.status, newValue: data.status });
@@ -207,8 +215,25 @@ taskRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
       }
       if (toAdd.length > 0) {
         await prisma.taskAssignee.createMany({
-          data: toAdd.map((userId) => ({ taskId: task.id, userId })),
+          data: toAdd.map((userId) => ({
+            taskId: task.id,
+            userId,
+            role: assigneeRoles?.[userId] || 'EDITOR',
+          })),
         });
+      }
+
+      if (assigneeRoles) {
+        const existing = [...oldIds].filter((id) => newIds.has(id));
+        for (const userId of existing) {
+          const newRole = assigneeRoles[userId];
+          if (newRole) {
+            await prisma.taskAssignee.update({
+              where: { taskId_userId: { taskId: task.id, userId } },
+              data: { role: newRole },
+            });
+          }
+        }
       }
 
       const newlyAssigned = toAdd.filter((id) => id !== req.userId);

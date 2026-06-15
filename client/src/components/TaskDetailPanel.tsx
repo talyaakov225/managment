@@ -35,6 +35,7 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
   const [status, setStatus] = useState<TaskStatus>('TODO');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
+  const [assigneeRoles, setAssigneeRoles] = useState<Record<string, string>>({});
   const [dueDate, setDueDate] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -59,6 +60,9 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
   const commentMenuRef = useRef<HTMLDivElement>(null);
 
   const he = lang === 'he';
+  const isCreator = task?.creatorId === user?.id;
+  const myRole = task?.assignees?.find(a => a.userId === user?.id)?.role;
+  const canEdit = isCreator || myRole !== 'VIEWER' || user?.globalRole === 'SUPER_ADMIN';
 
   useEffect(() => {
     chatApi.getUsers().then(({ data }) => setAllUsers(data)).catch(() => {});
@@ -91,6 +95,9 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       setPriority(task.priority);
       setColor(task.color || null);
       setAssigneeIds(new Set(task.assignees?.map((a) => a.userId) || []));
+      const roles: Record<string, string> = {};
+      task.assignees?.forEach((a) => { roles[a.userId] = a.role || 'EDITOR'; });
+      setAssigneeRoles(roles);
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       loadComments(task.id);
       loadSubtasks(task.id);
@@ -152,6 +159,7 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       const { data } = await taskApi.update(task.id, {
         title, description: description || null, status, priority, color,
         assigneeIds: Array.from(assigneeIds),
+        assigneeRoles,
         dueDate: dueDate || null,
       });
       onUpdate(data);
@@ -252,20 +260,33 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                 <input
                   type="text"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={handleSave}
-                  className="flex-1 text-lg font-semibold text-slate-900 dark:text-white bg-transparent border-none outline-none focus:ring-0 p-0 min-w-0"
+                  onChange={(e) => canEdit && setTitle(e.target.value)}
+                  onBlur={canEdit ? handleSave : undefined}
+                  readOnly={!canEdit}
+                  className={`flex-1 text-lg font-semibold text-slate-900 dark:text-white bg-transparent border-none outline-none focus:ring-0 p-0 min-w-0 ${!canEdit ? 'cursor-default' : ''}`}
                 />
               </div>
               <div className="flex items-center gap-1 shrink-0 ms-3">
-                <button onClick={() => setShowDeleteConfirm(true)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                  <button onClick={() => setShowDeleteConfirm(true)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
                 <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
+
+            {/* Viewer banner */}
+            {!canEdit && (
+              <div className="mx-5 mt-3 px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                <Eye className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                  {he ? 'יש לך הרשאת צפייה בלבד במשימה זו' : 'You have view-only access to this task'}
+                </span>
+              </div>
+            )}
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5">
@@ -432,7 +453,7 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                       </button>
                     </div>
 
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    <div className="space-y-3">
                       {comments.map((comment) => {
                         const isOwn = comment.author.id === user?.id;
                         const isEditing = editingCommentId === comment.id;
@@ -526,7 +547,8 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                       {STATUSES.map((s) => (
                         <button
                           key={s}
-                          onClick={() => { setStatus(s); setTimeout(handleSave, 50); }}
+                          disabled={!canEdit}
+                          onClick={() => { if (canEdit) { setStatus(s); setTimeout(handleSave, 50); } }}
                           className={`text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all ${
                             status === s
                               ? `${STATUS_STYLE[s].bgColor} ${STATUS_STYLE[s].color} ring-1 ring-current`
@@ -633,22 +655,52 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                     </label>
 
                     {/* Selected assignees chips */}
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {selectedUsers.map((u) => (
-                        <span
-                          key={u.id}
-                          className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 text-xs font-medium text-primary-700 dark:text-primary-300"
-                        >
-                          <Avatar name={u.name} size="xs" />
-                          {u.name}
-                          <button
-                            onClick={() => { toggleAssignee(u.id); setTimeout(handleSave, 100); }}
-                            className="p-0.5 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
+                    <div className="flex flex-col gap-1.5 mb-2">
+                      {selectedUsers.map((u) => {
+                        const role = assigneeRoles[u.id] || 'EDITOR';
+                        return (
+                          <div
+                            key={u.id}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800"
                           >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+                            <Avatar name={u.name} size="xs" />
+                            <span className="text-xs font-medium text-primary-700 dark:text-primary-300 flex-1">{u.name}</span>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  const newRole = role === 'EDITOR' ? 'VIEWER' : 'EDITOR';
+                                  setAssigneeRoles(prev => ({ ...prev, [u.id]: newRole }));
+                                  setTimeout(handleSave, 100);
+                                }}
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold transition-colors ${
+                                  role === 'EDITOR'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                                }`}
+                              >
+                                {role === 'EDITOR' ? (he ? 'עריכה' : 'Edit') : (he ? 'צפייה' : 'View')}
+                              </button>
+                            )}
+                            {!canEdit && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                role === 'EDITOR'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                              }`}>
+                                {role === 'EDITOR' ? (he ? 'עריכה' : 'Edit') : (he ? 'צפייה' : 'View')}
+                              </span>
+                            )}
+                            {canEdit && (
+                              <button
+                                onClick={() => { toggleAssignee(u.id); setTimeout(handleSave, 100); }}
+                                className="p-0.5 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors"
+                              >
+                                <X className="w-3 h-3 text-primary-500" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                       {assigneeIds.size === 0 && (
                         <p className="text-xs text-slate-400 italic py-1">{he ? 'רק אתה רואה משימה זו' : 'Only you can see this task'}</p>
                       )}
@@ -733,9 +785,11 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
             {/* Footer */}
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-3 shrink-0">
               <button onClick={onClose} className="btn-secondary flex-1">{t.common.close}</button>
-              <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
-                {saving ? t.common.saving : t.task.saveChanges}
-              </button>
+              {canEdit && (
+                <button onClick={async () => { await handleSave(); onClose(); }} disabled={saving} className="btn-primary flex-1">
+                  {saving ? t.common.saving : t.task.saveChanges}
+                </button>
+              )}
             </div>
 
             {/* Delete confirmation */}
