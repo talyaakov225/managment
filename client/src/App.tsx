@@ -10,6 +10,7 @@ import { ProjectBoardPage } from './pages/ProjectBoardPage';
 import { TeamPage } from './pages/TeamPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CustomPageView } from './pages/CustomPageView';
+import { TasksPage } from './pages/TasksPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ChatPage } from './pages/ChatPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="tasks" element={<TasksPage />} />
         <Route path="projects/:id" element={<ProjectBoardPage />} />
         <Route path="projects/:id/team" element={<TeamPage />} />
         <Route path="settings" element={<SettingsPage />} />

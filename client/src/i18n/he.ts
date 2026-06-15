@@ -16,6 +16,7 @@ export const he = {
   },
   nav: {
     dashboard: 'לוח בקרה',
+    tasks: 'משימות',
     projects: 'פרויקטים',
     settings: 'הגדרות',
     logout: 'התנתקות',

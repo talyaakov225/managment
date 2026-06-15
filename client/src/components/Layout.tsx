@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FolderKanban, Settings, LogOut, Plus,
   ChevronLeft, ChevronRight, Moon, Sun, Menu, Languages,
-  Shield, FileText, Clock, MessageCircle, Star,
+  Shield, FileText, Clock, MessageCircle, Star, ListTodo,
   Bell, Search, CheckCheck, ExternalLink, StickyNote, AlarmClock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -254,6 +254,20 @@ export function Layout() {
         >
           <LayoutDashboard className="w-5 h-5 shrink-0" />
           {!collapsed && <span>{t.nav.dashboard}</span>}
+        </NavLink>
+
+        <NavLink
+          to="/tasks"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+            ${isActive
+              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <ListTodo className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>{t.nav.tasks}</span>}
         </NavLink>
 
         <NavLink

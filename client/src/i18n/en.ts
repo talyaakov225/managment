@@ -18,6 +18,7 @@ export const en: Translations = {
   },
   nav: {
     dashboard: 'Dashboard',
+    tasks: 'Tasks',
     projects: 'Projects',
     settings: 'Settings',
     logout: 'Logout',
