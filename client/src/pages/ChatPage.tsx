@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Send, MessageCircle, Search, LinkIcon, X, Users, Hash,
+  Send, MessageCircle, Search, LinkIcon, X, Users, Hash, Menu,
   Reply, AtSign, ArrowUpRight, Smile, Plus, Pencil, Trash2,
   Pin, PinOff, Paperclip, Mic, MicOff, Bold, Italic, Strikethrough,
   Code, ChevronDown, Check, CheckCheck, Image as ImageIcon, File as FileIcon,
 } from 'lucide-react';
+import { PageSpinner } from '../components/Skeleton';
 import { chatApi, taskApi, projectApi } from '../services/api';
 import type { ChatChannel, ChatMessage, ChatSearchResult, TypingUser } from '../services/api';
 import type { Task, Project, User } from '../types';
@@ -47,6 +48,9 @@ export function ChatPage() {
   const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
   const [emojiPickerMsgId, setEmojiPickerMsgId] = useState<string | null>(null);
   const [showInputEmoji, setShowInputEmoji] = useState(false);
+
+  // Mobile sidebar
+  const [showSidebar, setShowSidebar] = useState(true);
 
   // Feature panels
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -141,6 +145,7 @@ export function ChatPage() {
     setCurrentPage(1);
     setReplyingTo(null);
     setEditingMsg(null);
+    if (window.innerWidth < 768) setShowSidebar(false);
     loadMessages(ch.id, 1);
 
     if (pollRef.current) clearInterval(pollRef.current);
@@ -560,11 +565,7 @@ export function ChatPage() {
 
   // ── Loading ──
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   const groupChannels = channels.filter((c) => !isDM(c) && !c.isGeneral);
@@ -572,9 +573,9 @@ export function ChatPage() {
   const generalChannel = channels.find((c) => c.isGeneral);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       {/* ── Channel Sidebar ── */}
-      <div className="w-72 shrink-0 bg-white dark:bg-slate-900 border-e border-slate-200 dark:border-slate-800 flex flex-col h-full">
+      <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-full md:w-72 shrink-0 bg-white dark:bg-slate-900 border-e border-slate-200 dark:border-slate-800 flex-col h-full absolute md:relative inset-0 z-20`}>
         {/* Sidebar Header */}
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900 dark:text-white">{t.chat.title}</h2>
@@ -678,6 +679,9 @@ export function ChatPage() {
           <>
             {/* Header */}
             <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-4 shrink-0">
+              <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 -ms-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+                <Menu className="w-5 h-5" />
+              </button>
               <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                 {isDM(activeChannel) ? (
                   <Avatar name={getChannelDisplayName(activeChannel)} size="sm" />
@@ -707,7 +711,7 @@ export function ChatPage() {
             </div>
 
             {/* Messages Area */}
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 bg-slate-50 dark:bg-slate-950 space-y-1" onClick={() => { setEmojiPickerMsgId(null); setHoveredMsgId(null); }}>
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 bg-slate-50 dark:bg-slate-950 space-y-1" onClick={() => { setEmojiPickerMsgId(null); setHoveredMsgId(null); }}>
               {/* Load older */}
               <div ref={messagesTopRef} />
               {loadingOlder && (
@@ -765,13 +769,13 @@ export function ChatPage() {
                       onMouseEnter={() => setHoveredMsgId(msg.id)}
                       onMouseLeave={() => { if (emojiPickerMsgId !== msg.id) setHoveredMsgId(null); }}
                     >
-                      <div className={`flex gap-2.5 max-w-[75%] ${isMe ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex gap-2.5 max-w-[65%] ${isMe ? 'flex-row-reverse' : ''}`}>
                         {!isMe && showAvatar ? (
                           <div className="shrink-0 mt-auto"><Avatar name={msg.author.name} size="sm" /></div>
                         ) : (
                           !isMe && <div className="w-8 shrink-0" />
                         )}
-                        <div className={isMe ? 'items-end' : 'items-start'}>
+                        <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
                           {showAvatar && !isMe && (
                             <p className={`text-xs font-semibold mb-1 ms-2 ${isBot ? 'text-amber-500' : 'text-primary-600 dark:text-primary-400'}`}>
                               {isBot ? '🤖 Bot' : msg.author.name}
@@ -796,7 +800,7 @@ export function ChatPage() {
                             {isEmoji ? (
                               <div className="text-4xl px-2 py-1">{msg.content}</div>
                             ) : (
-                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm max-w-[min(85vw,32rem)] overflow-hidden ${
+                              <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm overflow-hidden ${
                                 isBot
                                   ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-100 border border-amber-200 dark:border-amber-800 rounded-es-md'
                                   : isMe
@@ -804,7 +808,7 @@ export function ChatPage() {
                                     : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 rounded-es-md'
                               }`}>
                                 {msg.content && (
-                                  <div className="whitespace-pre-wrap break-words overflow-hidden max-w-full">{renderContent(msg.content)}</div>
+                                  <div className="whitespace-pre-wrap break-words overflow-hidden">{renderContent(msg.content)}</div>
                                 )}
 
                                 {/* Attachments */}
@@ -848,12 +852,12 @@ export function ChatPage() {
 
                             {/* Reactions */}
                             {reactionGroups.length > 0 && (
-                              <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`flex flex-wrap gap-1.5 mt-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 {reactionGroups.map((rg) => (
                                   <button key={rg.emoji} onClick={(e) => { e.stopPropagation(); handleToggleReaction(msg.id, rg.emoji); }}
                                     title={rg.users.map((u) => u.name).join(', ')}
-                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border ${rg.myReaction ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
-                                    <span>{rg.emoji}</span>
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors border ${rg.myReaction ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                                    <span className="text-sm">{rg.emoji}</span>
                                     <span className={`font-semibold ${rg.myReaction ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500'}`}>{rg.users.length}</span>
                                   </button>
                                 ))}
@@ -863,8 +867,8 @@ export function ChatPage() {
                             {/* Hover Actions */}
                             <AnimatePresence>
                               {isHovered && (
-                                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                                  className={`absolute ${isMe ? 'start-0 -translate-x-full ps-1' : 'end-0 translate-x-full pe-1'} top-0 flex items-center gap-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg px-1 py-0.5 z-10`}
+                                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
+                                  className={`absolute ${isMe ? 'end-0' : 'start-0'} bottom-full mb-1 flex items-center gap-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg px-1 py-0.5 z-10`}
                                   onClick={(e) => e.stopPropagation()}>
                                   <button onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); setHoveredMsgId(null); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-500 transition-colors" title={t.chat.reply}>
                                     <Reply className="w-3.5 h-3.5" />
@@ -893,11 +897,11 @@ export function ChatPage() {
                             <AnimatePresence>
                               {emojiPickerMsgId === msg.id && (
                                 <motion.div initial={{ opacity: 0, scale: 0.9, y: -5 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -5 }}
-                                  className={`absolute ${isMe ? 'end-0' : 'start-0'} top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2 z-20`}
+                                  className={`absolute ${isMe ? 'end-0' : 'start-0'} bottom-full mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-2.5 z-20`}
                                   onClick={(e) => e.stopPropagation()}>
-                                  <div className="grid grid-cols-5 gap-1">
+                                  <div className="flex flex-wrap gap-1.5 max-w-[220px]">
                                     {REACTION_EMOJIS.map((emoji) => (
-                                      <button key={emoji} onClick={() => handleToggleReaction(msg.id, emoji)} className="w-9 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-lg transition-transform hover:scale-125">{emoji}</button>
+                                      <button key={emoji} onClick={() => handleToggleReaction(msg.id, emoji)} className="w-9 h-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-xl transition-transform hover:scale-125">{emoji}</button>
                                     ))}
                                   </div>
                                 </motion.div>

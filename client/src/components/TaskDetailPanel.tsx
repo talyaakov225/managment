@@ -4,10 +4,12 @@ import {
   X, Calendar, User, Flag, MessageSquare,
   Send, Trash2, AlertCircle, Pencil, Eye, Palette, Users, Check, Search,
   MoreVertical, Edit3, Plus, Clock, ChevronDown,
+  Play, Square, Timer, Link2, Tag as TagIcon,
 } from 'lucide-react';
 import {
   taskApi, commentApi, chatApi, subtaskApi, taskActivityApi,
-  type Subtask, type TaskActivity,
+  timeTrackingApi, dependencyApi, tagApi,
+  type Subtask, type TaskActivity, type TimeEntry, type TaskDependency, type Tag,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
@@ -54,6 +56,15 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
   const [newSubtask, setNewSubtask] = useState('');
   const [activities, setActivities] = useState<TaskActivity[]>([]);
   const [showActivity, setShowActivity] = useState(false);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [activeTimer, setActiveTimer] = useState<TimeEntry | null>(null);
+  const [timerElapsed, setTimerElapsed] = useState(0);
+  const [showTimeTracking, setShowTimeTracking] = useState(false);
+  const [dependencies, setDependencies] = useState<{ dependsOn: TaskDependency[]; dependedBy: TaskDependency[] }>({ dependsOn: [], dependedBy: [] });
+  const [showDependencies, setShowDependencies] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [taskTags, setTaskTags] = useState<Tag[]>([]);
+  const [showTags, setShowTags] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const priorityRef = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLDivElement>(null);
@@ -108,6 +119,10 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       loadComments(task.id);
       loadSubtasks(task.id);
       loadActivities(task.id);
+      loadTimeEntries(task.id);
+      loadDependencies(task.id);
+      loadTaskTags(task.id);
+      tagApi.getAll().then((r) => setAllTags(r.data)).catch(() => {});
     } else {
       setTitle('');
       setDescription('');
@@ -166,6 +181,69 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       setComments(data);
     } catch { /* silent */ }
   }
+
+  async function loadTimeEntries(taskId: string) {
+    try {
+      const { data } = await timeTrackingApi.getByTask(taskId);
+      setTimeEntries(data);
+      const running = data.find((e: TimeEntry) => !e.endTime);
+      if (running) setActiveTimer(running);
+      else setActiveTimer(null);
+    } catch { /* silent */ }
+  }
+
+  async function loadDependencies(taskId: string) {
+    try {
+      const { data } = await dependencyApi.getByTask(taskId);
+      setDependencies(data);
+    } catch { /* silent */ }
+  }
+
+  async function loadTaskTags(taskId: string) {
+    try {
+      const { data } = await tagApi.getTaskTags(taskId);
+      setTaskTags(data);
+    } catch { /* silent */ }
+  }
+
+  async function handleStartTimer() {
+    if (!task) return;
+    try {
+      const { data } = await timeTrackingApi.start(task.id, { startTime: new Date().toISOString() });
+      setActiveTimer(data);
+      setTimerElapsed(0);
+    } catch { toast.error('Failed to start timer'); }
+  }
+
+  async function handleStopTimer() {
+    if (!activeTimer) return;
+    const endTime = new Date().toISOString();
+    const duration = Math.round((new Date(endTime).getTime() - new Date(activeTimer.startTime).getTime()) / 1000);
+    try {
+      await timeTrackingApi.stop(activeTimer.id, { endTime, duration });
+      setActiveTimer(null);
+      setTimerElapsed(0);
+      if (task) loadTimeEntries(task.id);
+    } catch { toast.error('Failed to stop timer'); }
+  }
+
+  async function handleToggleTag(tagId: string) {
+    if (!task) return;
+    const current = taskTags.map((t) => t.id);
+    const newIds = current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId];
+    try {
+      const { data } = await tagApi.setTaskTags(task.id, newIds);
+      setTaskTags(data);
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => {
+    if (!activeTimer) return;
+    const interval = setInterval(() => {
+      setTimerElapsed(Math.round((Date.now() - new Date(activeTimer.startTime).getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeTimer]);
 
   async function handleSave() {
     if (!task) return;
@@ -444,6 +522,135 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <button
+                      onClick={() => setShowTags(!showTags)}
+                      className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 hover:text-primary-500 transition-colors"
+                    >
+                      <TagIcon className="w-3.5 h-3.5" />
+                      {lang === 'he' ? 'תגיות' : 'Tags'} ({taskTags.length})
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showTags ? 'rotate-180' : ''}`} />
+                    </button>
+                    {taskTags.length > 0 && !showTags && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {taskTags.map((tag) => (
+                          <span key={tag.id} className="px-2 py-0.5 rounded-full text-[10px] font-medium text-white" style={{ backgroundColor: tag.color }}>{tag.name}</span>
+                        ))}
+                      </div>
+                    )}
+                    <AnimatePresence>
+                      {showTags && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                            {allTags.map((tag) => {
+                              const active = taskTags.some((t2) => t2.id === tag.id);
+                              return (
+                                <button key={tag.id} onClick={() => handleToggleTag(tag.id)}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${active ? 'text-white ring-2 ring-offset-1' : 'text-slate-600 dark:text-slate-300 opacity-50 hover:opacity-100'}`}
+                                  style={{ backgroundColor: active ? tag.color : undefined, borderColor: tag.color, ringColor: tag.color }}
+                                >
+                                  {tag.name}
+                                </button>
+                              );
+                            })}
+                            {allTags.length === 0 && <p className="text-xs text-slate-400">{lang === 'he' ? 'אין תגיות. צרו תגיות בעמוד התגיות.' : 'No tags. Create tags first.'}</p>}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Time Tracking */}
+                  <div>
+                    <button
+                      onClick={() => setShowTimeTracking(!showTimeTracking)}
+                      className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 hover:text-primary-500 transition-colors"
+                    >
+                      <Timer className="w-3.5 h-3.5" />
+                      {lang === 'he' ? 'מעקב שעות' : 'Time Tracking'}
+                      {activeTimer && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showTimeTracking ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {showTimeTracking && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              {!activeTimer ? (
+                                <button onClick={handleStartTimer} className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5">
+                                  <Play className="w-3.5 h-3.5" /> {lang === 'he' ? 'התחל' : 'Start'}
+                                </button>
+                              ) : (
+                                <button onClick={handleStopTimer} className="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-red-600">
+                                  <Square className="w-3.5 h-3.5" /> {lang === 'he' ? 'עצור' : 'Stop'}
+                                </button>
+                              )}
+                              {activeTimer && (
+                                <span className="text-sm font-mono font-medium text-green-600 dark:text-green-400">
+                                  {String(Math.floor(timerElapsed / 3600)).padStart(2, '0')}:{String(Math.floor((timerElapsed % 3600) / 60)).padStart(2, '0')}:{String(timerElapsed % 60).padStart(2, '0')}
+                                </span>
+                              )}
+                              {!activeTimer && timeEntries.length > 0 && (
+                                <span className="text-xs text-slate-500">
+                                  {lang === 'he' ? 'סה"כ:' : 'Total:'} {Math.round(timeEntries.reduce((s, e) => s + (e.duration || 0), 0) / 60)}{lang === 'he' ? ' דקות' : 'm'}
+                                </span>
+                              )}
+                            </div>
+                            {timeEntries.slice(0, 5).map((entry) => (
+                              <div key={entry.id} className="flex items-center justify-between text-xs text-slate-500 py-1 border-b border-slate-100 dark:border-slate-800">
+                                <span>{new Date(entry.startTime).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="font-mono">{entry.duration ? `${Math.round(entry.duration / 60)}m` : '...'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Dependencies */}
+                  <div>
+                    <button
+                      onClick={() => setShowDependencies(!showDependencies)}
+                      className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 hover:text-primary-500 transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      {lang === 'he' ? 'תלויות' : 'Dependencies'} ({dependencies.dependsOn.length + dependencies.dependedBy.length})
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDependencies ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {showDependencies && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                          <div className="space-y-2">
+                            {dependencies.dependsOn.length > 0 && (
+                              <div>
+                                <p className="text-[10px] text-slate-400 mb-1">{lang === 'he' ? 'תלוי ב:' : 'Depends on:'}</p>
+                                {dependencies.dependsOn.map((d) => (
+                                  <div key={d.id} className="flex items-center justify-between text-xs py-1">
+                                    <span className="text-slate-700 dark:text-slate-300">{d.dependsOn?.title}</span>
+                                    <button onClick={async () => { await dependencyApi.delete(d.id); if (task) loadDependencies(task.id); }} className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {dependencies.dependedBy.length > 0 && (
+                              <div>
+                                <p className="text-[10px] text-slate-400 mb-1">{lang === 'he' ? 'חוסם:' : 'Blocks:'}</p>
+                                {dependencies.dependedBy.map((d) => (
+                                  <div key={d.id} className="text-xs text-slate-700 dark:text-slate-300 py-1">{d.task?.title}</div>
+                                ))}
+                              </div>
+                            )}
+                            {dependencies.dependsOn.length === 0 && dependencies.dependedBy.length === 0 && (
+                              <p className="text-xs text-slate-400 italic">{lang === 'he' ? 'אין תלויות' : 'No dependencies'}</p>
+                            )}
                           </div>
                         </motion.div>
                       )}

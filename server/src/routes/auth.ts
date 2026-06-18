@@ -6,8 +6,9 @@ import { prisma } from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'taskflow-super-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'taskflow-refresh-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) throw new Error('FATAL: JWT_SECRET and JWT_REFRESH_SECRET environment variables must be set');
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -21,8 +22,8 @@ const loginSchema = z.object({
 });
 
 function generateTokens(userId: string, globalRole: string = 'USER') {
-  const accessToken = jwt.sign({ userId, globalRole }, JWT_SECRET, { expiresIn: '7d' });
-  const refreshToken = jwt.sign({ userId, globalRole }, JWT_REFRESH_SECRET, { expiresIn: '30d' });
+  const accessToken = jwt.sign({ userId, globalRole }, JWT_SECRET!, { expiresIn: '1h' });
+  const refreshToken = jwt.sign({ userId, globalRole }, JWT_REFRESH_SECRET!, { expiresIn: '30d' });
   return { accessToken, refreshToken };
 }
 
@@ -79,6 +80,16 @@ authRouter.post('/login', async (req, res: Response, next) => {
 
     const tokens = generateTokens(user.id, user.globalRole);
 
+    await prisma.loginLog.create({
+      data: {
+        email: data.email,
+        userId: user.id,
+        success: true,
+        ipAddress: req.ip || req.headers['x-forwarded-for']?.toString() || null,
+        userAgent: req.headers['user-agent'] || null,
+      },
+    }).catch(() => {});
+
     res.json({
       user: {
         id: user.id,
@@ -95,6 +106,19 @@ authRouter.post('/login', async (req, res: Response, next) => {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: err.errors[0].message });
       return;
+    }
+    if (err instanceof AppError && err.statusCode === 401) {
+      const email = req.body?.email;
+      if (email) {
+        await prisma.loginLog.create({
+          data: {
+            email,
+            success: false,
+            ipAddress: req.ip || req.headers['x-forwarded-for']?.toString() || null,
+            userAgent: req.headers['user-agent'] || null,
+          },
+        }).catch(() => {});
+      }
     }
     next(err);
   }
@@ -151,6 +175,10 @@ authRouter.put('/preferences', authenticate, async (req: AuthRequest, res: Respo
       seeAllTasks: z.boolean().optional(),
     });
     const data = schema.parse(req.body);
+
+    if (data.seeAllTasks !== undefined && req.globalRole !== 'SUPER_ADMIN') {
+      throw new AppError('Only SUPER_ADMIN can change task visibility preference', 403);
+    }
 
     const updated = await prisma.user.update({
       where: { id: req.userId },

@@ -26,3 +26,11 @@ boardPublicRouter.get('/categories', async (_req: AuthRequest, res: Response, ne
     res.json(categories);
   } catch (err) { next(err); }
 });
+
+boardPublicRouter.get('/nav-config', async (_req: AuthRequest, res: Response, next) => {
+  try {
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'nav_hidden_items' } });
+    const hidden: string[] = setting ? JSON.parse(setting.value) : [];
+    res.json({ hidden });
+  } catch (err) { next(err); }
+});

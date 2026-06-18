@@ -9,7 +9,7 @@ import {
 import {
   Users, Loader2, MoreHorizontal, Search, LayoutGrid, Table2,
   CheckCircle2, AlertTriangle, UserX, ListTodo, X, ChevronDown,
-  Download, CheckSquare,
+  Download, CheckSquare, Upload,
 } from 'lucide-react';
 import { projectApi, taskApi, memberApi } from '../services/api';
 import { useLang } from '../context/LangContext';
@@ -129,13 +129,8 @@ export function ProjectBoardPage() {
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      if (e.key === '/' && !e.ctrlKey) {
-        e.preventDefault();
-        document.querySelector<HTMLInputElement>('[data-search-input]')?.focus();
-      }
-      if (e.key === 'v' || e.key === 'V') {
-        e.preventDefault();
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || (e.target as HTMLElement).isContentEditable) return;
+      if ((e.key === 'v' || e.key === 'V') && !e.ctrlKey && !e.metaKey) {
         setViewMode((m) => (m === 'kanban' ? 'table' : 'kanban'));
       }
     }
@@ -163,7 +158,9 @@ export function ProjectBoardPage() {
       ]);
       setTasks(tasksRes.data);
       setMembers(membersRes.data);
-    } catch { /* silent */ }
+    } catch {
+      toast.error(lang === 'he' ? 'שגיאה בטעינת נתוני הפרויקט' : 'Failed to load project data');
+    }
   }
 
   useLiveRefresh(silentRefresh, 5000, !!id && !loading);
@@ -291,7 +288,7 @@ export function ProjectBoardPage() {
       [t.task.assignee]: task.assignees?.map((a) => a.user.name).join(', ') || t.task.unassigned,
       [t.task.dueDate]: task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '',
       [t.board.created]: new Date(task.createdAt).toLocaleDateString(),
-      [t.task.description]: task.description?.replace(/<[^>]*>/g, '').slice(0, 200) || '',
+      [t.task.description]: task.description?.replace(/<\/(td|th|li|p|div|h[1-6])>/gi, ' | ').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200) || '',
     }));
 
     if (rows.length === 0) return;
@@ -312,6 +309,44 @@ export function ProjectBoardPage() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success(t.export.exported);
+  }
+
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  async function importFromCSV(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !project) return;
+    try {
+      const text = await file.text();
+      const lines = text.replace(/^\uFEFF/, '').split('\n').filter((l) => l.trim());
+      if (lines.length < 2) { toast.error(lang === 'he' ? 'קובץ ריק' : 'Empty file'); return; }
+
+      const headers = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim());
+      const titleIdx = headers.findIndex((h) => /title|שם|כותרת|task/i.test(h));
+      const statusIdx = headers.findIndex((h) => /status|סטטוס/i.test(h));
+      const priorityIdx = headers.findIndex((h) => /priority|עדיפות/i.test(h));
+
+      if (titleIdx < 0) { toast.error(lang === 'he' ? 'עמודת כותרת לא נמצאה' : 'Title column not found'); return; }
+
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].match(/("([^"]*("")*)*"|[^,]*)/g)?.map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || [];
+        const title = cols[titleIdx];
+        if (!title) continue;
+
+        const statusRaw = statusIdx >= 0 ? cols[statusIdx] : '';
+        const priorityRaw = priorityIdx >= 0 ? cols[priorityIdx] : '';
+        const status = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].find((s) => s === statusRaw?.toUpperCase().replace(/\s/g, '_')) || 'TODO';
+        const priority = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].find((p) => p === priorityRaw?.toUpperCase()) || 'MEDIUM';
+
+        await taskApi.create(project.id, { title, status: status as TaskStatus, priority: priority as TaskPriority });
+        imported++;
+      }
+
+      toast.success(`${lang === 'he' ? 'יובאו' : 'Imported'} ${imported} ${lang === 'he' ? 'משימות' : 'tasks'}`);
+      loadTasks();
+    } catch { toast.error(lang === 'he' ? 'שגיאה בייבוא' : 'Import failed'); }
+    if (importFileRef.current) importFileRef.current.value = '';
   }
 
   function clearAllFilters() {
@@ -459,6 +494,16 @@ export function ProjectBoardPage() {
                   {t.board.clearFilters}
                 </button>
               )}
+
+              {/* Import CSV */}
+              <input ref={importFileRef} type="file" accept=".csv" className="hidden" onChange={importFromCSV} />
+              <button
+                onClick={() => importFileRef.current?.click()}
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-primary-600 hover:border-primary-300 transition-colors"
+                title={lang === 'he' ? 'ייבוא מ-CSV' : 'Import CSV'}
+              >
+                <Upload className="w-4 h-4" />
+              </button>
 
               {/* Export CSV */}
               <button

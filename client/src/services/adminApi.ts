@@ -37,16 +37,19 @@ export const adminBoardApi = {
   createStatus: (data: Partial<BoardStatus>) => api.post<BoardStatus>('/admin/board/statuses', data),
   updateStatus: (id: string, data: Partial<BoardStatus>) => api.put<BoardStatus>(`/admin/board/statuses/${id}`, data),
   deleteStatus: (id: string) => api.delete(`/admin/board/statuses/${id}`),
+  reorderStatuses: (ids: string[]) => api.put('/admin/board/statuses/reorder', { ids }),
 
   getPriorities: () => api.get<BoardPriority[]>('/admin/board/priorities'),
   createPriority: (data: Partial<BoardPriority>) => api.post<BoardPriority>('/admin/board/priorities', data),
   updatePriority: (id: string, data: Partial<BoardPriority>) => api.put<BoardPriority>(`/admin/board/priorities/${id}`, data),
   deletePriority: (id: string) => api.delete(`/admin/board/priorities/${id}`),
+  reorderPriorities: (ids: string[]) => api.put('/admin/board/priorities/reorder', { ids }),
 
   getCategories: () => api.get<Category[]>('/admin/board/categories'),
   createCategory: (data: { name: string; color?: string }) => api.post<Category>('/admin/board/categories', data),
   updateCategory: (id: string, data: Partial<Category>) => api.put<Category>(`/admin/board/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete(`/admin/board/categories/${id}`),
+  reorderCategories: (ids: string[]) => api.put('/admin/board/categories/reorder', { ids }),
 };
 
 export const adminProjectsApi = {
@@ -80,6 +83,8 @@ export const adminSettingsApi = {
   create: (data: Partial<SystemSetting>) => api.post<SystemSetting>('/admin/settings', data),
   update: (id: string, value: string) => api.put<SystemSetting>(`/admin/settings/${id}`, { value }),
   delete: (id: string) => api.delete(`/admin/settings/${id}`),
+  getNavConfig: () => api.get<{ hidden: string[] }>('/admin/settings/nav-config'),
+  updateNavConfig: (hidden: string[]) => api.put<{ hidden: string[] }>('/admin/settings/nav-config', { hidden }),
 };
 
 export const adminAuditApi = {
@@ -87,6 +92,12 @@ export const adminAuditApi = {
     api.get<{ logs: AuditLog[]; total: number; page: number; totalPages: number }>(
       '/admin/audit-logs', { params }
     ),
+};
+
+export const adminAnalyticsApi = {
+  get: () => api.get('/admin/dashboard/analytics'),
+  getLoginLogs: (params?: { page?: number; limit?: number }) =>
+    api.get('/admin/dashboard/login-logs', { params }),
 };
 
 export const adminChatApi = {

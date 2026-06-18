@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileX } from 'lucide-react';
+import { PageSpinner } from '../components/Skeleton';
 import { navPublicApi } from '../services/adminApi';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
@@ -26,13 +27,7 @@ export function CustomPageView() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <PageSpinner />;
 
   if (error || !page) {
     return (

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { adminPagesApi, adminNavApi } from '../../services/adminApi';
 import { useLang } from '../../context/LangContext';
 import { Modal } from '../../components/Modal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { CustomPage, NavItem } from '../../types/admin';
 
 export function AdminPages() {
@@ -21,6 +22,7 @@ export function AdminPages() {
   const [selectedNavId, setSelectedNavId] = useState('');
   const [newNavItem, setNewNavItem] = useState({ icon: 'FileText' });
   const [linking, setLinking] = useState(false);
+  const [deletePageId, setDeletePageId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -71,7 +73,6 @@ export function AdminPages() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t.admin.deletePageConfirm)) return;
     try {
       await adminPagesApi.delete(id);
       toast.success(t.admin.deleted);
@@ -180,7 +181,7 @@ export function AdminPages() {
                 <button onClick={() => navigate(`/admin/pages/${page.id}/edit`)} className="btn-ghost p-1.5">
                   <Edit3 className="w-4 h-4 text-primary-500" />
                 </button>
-                <button onClick={() => handleDelete(page.id)} className="btn-ghost p-1.5 text-red-500">
+                <button onClick={() => setDeletePageId(page.id)} className="btn-ghost p-1.5 text-red-500">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -315,6 +316,16 @@ export function AdminPages() {
             </div>
           )}
         </Modal>
+
+        <ConfirmDialog
+          isOpen={!!deletePageId}
+          onClose={() => setDeletePageId(null)}
+          onConfirm={() => { if (deletePageId) handleDelete(deletePageId); }}
+          title={t.admin.deletePageConfirm}
+          message={lang === 'he' ? 'פעולה זו אינה ניתנת לביטול' : 'This action cannot be undone'}
+          confirmText={lang === 'he' ? 'מחק' : 'Delete'}
+          cancelText={t.common.cancel}
+        />
       </motion.div>
     </div>
   );

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, X, RotateCcw } from 'lucide-react';
 import { stickyNoteApi, type StickyNote } from '../services/api';
 import { useLang } from '../context/LangContext';
 import toast from 'react-hot-toast';
@@ -16,6 +16,9 @@ const NOTE_COLORS = [
   { value: '#ffffff', label: 'White' },
 ];
 
+const STORAGE_KEY = 'sticky_notes_position';
+const DEFAULT_POS = { x: -1, y: -1 };
+
 interface StickyNotesProps {
   open: boolean;
   onClose: () => void;
@@ -29,6 +32,16 @@ export function StickyNotes({ open, onClose }: StickyNotesProps) {
   const [loading, setLoading] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_POS;
+    } catch { return DEFAULT_POS; }
+  });
+  const [dragging, setDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (open) {
@@ -45,6 +58,40 @@ export function StickyNotes({ open, onClose }: StickyNotesProps) {
   }, [open, activeIdx]);
 
   const activeNote = notes[activeIdx];
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, textarea, input')) return;
+    setDragging(true);
+    const rect = panelRef.current!.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    function onMove(e: MouseEvent) {
+      const newX = e.clientX - dragOffset.current.x;
+      const newY = e.clientY - dragOffset.current.y;
+      const maxX = window.innerWidth - 288;
+      const maxY = window.innerHeight - 100;
+      const clamped = { x: Math.max(0, Math.min(newX, maxX)), y: Math.max(0, Math.min(newY, maxY)) };
+      setPos(clamped);
+    }
+    function onUp() {
+      setDragging(false);
+      setPos((p) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+        return p;
+      });
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [dragging]);
+
+  function resetPosition() {
+    setPos(DEFAULT_POS);
+    localStorage.removeItem(STORAGE_KEY);
+  }
 
   async function createNote(color?: string) {
     try {
@@ -80,19 +127,25 @@ export function StickyNotes({ open, onClose }: StickyNotesProps) {
   function goPrev() { setActiveIdx((i) => Math.max(0, i - 1)); }
   function goNext() { setActiveIdx((i) => Math.min(notes.length - 1, i + 1)); }
 
+  const isDefault = pos.x === -1 && pos.y === -1;
+  const style: React.CSSProperties = isDefault
+    ? { position: 'fixed', bottom: 96, insetInlineEnd: 24 }
+    : { position: 'fixed', left: pos.x, top: pos.y };
+
   return (
     <AnimatePresence>
       {open && (
         <motion.div
+          ref={panelRef}
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="fixed bottom-24 end-6 z-50 w-72 shadow-2xl rounded-2xl overflow-hidden"
-          style={{ backgroundColor: activeNote?.color || '#fef08a' }}
+          className={`z-50 w-72 shadow-2xl rounded-2xl overflow-hidden select-none ${dragging ? 'cursor-grabbing' : ''}`}
+          style={{ ...style, backgroundColor: activeNote?.color || '#fef08a' }}
+          onMouseDown={handleMouseDown}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 bg-black/5">
+          <div className={`flex items-center justify-between px-3 py-2 bg-black/5 ${dragging ? '' : 'cursor-grab'}`}>
             <div className="flex items-center gap-1">
               <button onClick={goPrev} disabled={activeIdx <= 0}
                 className="p-1 rounded hover:bg-black/10 disabled:opacity-30 transition-colors">
@@ -108,6 +161,12 @@ export function StickyNotes({ open, onClose }: StickyNotesProps) {
             </div>
 
             <div className="flex items-center gap-0.5">
+              {!isDefault && (
+                <button onClick={resetPosition}
+                  className="p-1 rounded hover:bg-black/10 transition-colors" title={he ? 'איפוס מיקום' : 'Reset position'}>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button onClick={() => createNote(activeNote?.color)}
                 className="p-1 rounded hover:bg-black/10 transition-colors" title={he ? 'פתק חדש' : 'New note'}>
                 <Plus className="w-4 h-4" />
@@ -125,19 +184,17 @@ export function StickyNotes({ open, onClose }: StickyNotesProps) {
             </div>
           </div>
 
-          {/* Content */}
           <div className="px-3 pb-2">
             <textarea
               ref={textareaRef}
               value={activeNote?.content || ''}
               onChange={(e) => updateContent(e.target.value)}
               placeholder={he ? 'כתוב כאן...' : 'Write here...'}
-              className="w-full h-40 resize-none bg-transparent border-none outline-none text-sm leading-relaxed text-slate-800 placeholder:text-black/30"
+              className="w-full h-40 resize-none bg-transparent border-none outline-none text-sm leading-relaxed text-slate-800 placeholder:text-black/30 cursor-text"
               dir="auto"
             />
           </div>
 
-          {/* Color Picker */}
           <div className="flex items-center gap-1.5 px-3 py-2 bg-black/5">
             {NOTE_COLORS.map((c) => (
               <button

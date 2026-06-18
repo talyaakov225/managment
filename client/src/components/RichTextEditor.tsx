@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -195,7 +196,7 @@ function ToolBtn({ icon, onClick, active, disabled, title }: {
   );
 }
 
-function ColorPicker({ icon, colors, onSelect, onClear, title, isHighlight }: {
+function ColorPicker({ icon, colors, onSelect, onClear, title }: {
   icon: React.ReactNode;
   colors: string[];
   onSelect: (color: string) => void;
@@ -203,31 +204,50 @@ function ColorPicker({ icon, colors, onSelect, onClear, title, isHighlight }: {
   title?: string;
   isHighlight?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
   return (
-    <div className="relative group">
-      <button type="button" className="p-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700" title={title}>
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className={`p-1.5 rounded-md transition-all ${open ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+        title={title}
+      >
         {icon}
       </button>
-      <div className="absolute start-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 z-50 hidden group-hover:block min-w-[140px]">
-        <div className="grid grid-cols-5 gap-1 mb-1.5">
-          {colors.map((color) => (
-            <button
-              key={color}
-              type="button"
-              onClick={() => onSelect(color)}
-              className={`w-6 h-6 rounded-md border border-slate-200 dark:border-slate-600 hover:scale-110 transition-transform ${isHighlight ? '' : ''}`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
+      {open && (
+        <div className={`absolute start-0 top-full mt-0.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 z-50 ${colors.length > 15 ? 'min-w-[220px]' : 'min-w-[140px]'} max-h-[280px] overflow-y-auto`}>
+          <div className={`grid ${colors.length > 15 ? 'grid-cols-10' : 'grid-cols-5'} gap-1 mb-1.5`}>
+            {colors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => { onSelect(color); setOpen(false); }}
+                className="w-5 h-5 rounded-md border border-slate-200 dark:border-slate-600 hover:scale-125 transition-transform"
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => { onClear(); setOpen(false); }}
+            className="w-full text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-1 text-center"
+          >
+            ✕
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClear}
-          className="w-full text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-1 text-center"
-        >
-          {title ? '✕' : '✕'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }
@@ -257,9 +277,9 @@ export function RichTextEditor({ content, onChange, editable = true }: RichTextE
   if (!editor) return null;
 
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-xl">
       {editable && <MenuBar editor={editor} />}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-b-xl">
         <EditorContent
           editor={editor}
           className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[120px] focus:outline-none [&_table]:text-[13px] ${editable ? '' : 'cursor-default'}`}

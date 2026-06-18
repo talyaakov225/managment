@@ -5,6 +5,7 @@ import {
   Search, Filter, ChevronDown, Calendar, Flag, FolderOpen,
   Clock, X, MessageSquare, CheckCircle2, AlertCircle, Users,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { taskApi, projectApi } from '../services/api';
 import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useLang } from '../context/LangContext';
@@ -55,7 +56,9 @@ export function TasksPage() {
     try {
       const { data } = await projectApi.getAll();
       setProjects(data);
-    } catch { /* */ }
+    } catch {
+      toast.error(isRTL ? 'שגיאה בטעינת פרויקטים' : 'Failed to load projects');
+    }
   }
 
   async function loadTasks() {
@@ -75,7 +78,9 @@ export function TasksPage() {
       setTasks(data.tasks);
       setTotal(data.total);
       setTotalPages(data.totalPages);
-    } catch { /* */ }
+    } catch {
+      toast.error(isRTL ? 'שגיאה בטעינת משימות' : 'Failed to load tasks');
+    }
   }
 
   useLiveRefresh(silentLoadTasks, 5000, !loading);
@@ -120,15 +125,15 @@ export function TasksPage() {
   const groups = groupTasks();
 
   return (
-    <div className="max-w-7xl mx-auto p-4 lg:p-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+    <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-2 lg:pt-4 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold text-slate-900 dark:text-white">
             {he ? 'משימות' : 'Tasks'}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {he ? `${total} משימות פעילות` : `${total} active tasks`}
-          </p>
+          <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+            {total}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -136,8 +141,8 @@ export function TasksPage() {
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              className="input ps-9 pe-4 py-2 text-sm w-64"
-              placeholder={he ? 'חיפוש משימות...' : 'Search tasks...'}
+              className="input ps-9 pe-3 py-1.5 text-sm w-52"
+              placeholder={he ? 'חיפוש...' : 'Search...'}
               value={filters.search}
               onChange={(e) => { setFilters(f => ({ ...f, search: e.target.value })); setPage(1); }}
             />
@@ -145,7 +150,7 @@ export function TasksPage() {
 
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`btn-ghost p-2.5 rounded-xl relative ${hasFilters ? 'text-primary-600 bg-primary-50 dark:bg-primary-950/30' : ''}`}
+            className={`btn-ghost p-2 rounded-xl relative ${hasFilters ? 'text-primary-600 bg-primary-50 dark:bg-primary-950/30' : ''}`}
           >
             <Filter className="w-4 h-4" />
             {hasFilters && <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-primary-500 rounded-full" />}
@@ -154,7 +159,7 @@ export function TasksPage() {
           <select
             value={groupBy}
             onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
-            className="input py-2 text-sm"
+            className="input py-1.5 text-sm"
           >
             <option value="project">{he ? 'לפי פרויקט' : 'By Project'}</option>
             <option value="status">{he ? 'לפי סטטוס' : 'By Status'}</option>
@@ -168,10 +173,10 @@ export function TasksPage() {
         {showFilters && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-4"
+            className="overflow-hidden mb-3"
           >
-            <div className="card p-4 flex flex-wrap items-center gap-3">
-              <select className="input py-2 text-sm" value={filters.status}
+            <div className="card p-3 flex flex-wrap items-center gap-2">
+              <select className="input py-1.5 text-sm" value={filters.status}
                 onChange={(e) => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1); }}>
                 <option value="">{he ? 'כל הסטטוסים' : 'All Statuses'}</option>
                 {STATUSES.map(s => (
@@ -179,7 +184,7 @@ export function TasksPage() {
                 ))}
               </select>
 
-              <select className="input py-2 text-sm" value={filters.priority}
+              <select className="input py-1.5 text-sm" value={filters.priority}
                 onChange={(e) => { setFilters(f => ({ ...f, priority: e.target.value })); setPage(1); }}>
                 <option value="">{he ? 'כל העדיפויות' : 'All Priorities'}</option>
                 {priorities.map(p => (
@@ -187,7 +192,7 @@ export function TasksPage() {
                 ))}
               </select>
 
-              <select className="input py-2 text-sm" value={filters.projectId}
+              <select className="input py-1.5 text-sm" value={filters.projectId}
                 onChange={(e) => { setFilters(f => ({ ...f, projectId: e.target.value })); setPage(1); }}>
                 <option value="">{he ? 'כל הפרויקטים' : 'All Projects'}</option>
                 {projects.map(p => (
@@ -196,8 +201,8 @@ export function TasksPage() {
               </select>
 
               {hasFilters && (
-                <button onClick={clearFilters} className="btn-ghost text-sm px-3 py-2 text-red-500">
-                  <X className="w-4 h-4 me-1" />
+                <button onClick={clearFilters} className="btn-ghost text-sm px-2 py-1.5 text-red-500">
+                  <X className="w-3.5 h-3.5 me-1" />
                   {he ? 'נקה' : 'Clear'}
                 </button>
               )}

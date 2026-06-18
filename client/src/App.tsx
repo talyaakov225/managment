@@ -24,7 +24,19 @@ import { PageBlockEditor } from './pages/admin/PageBlockEditor';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminAudit } from './pages/admin/AdminAudit';
 import { AdminChat } from './pages/admin/AdminChat';
+import { AdminAnalytics } from './pages/admin/AdminAnalytics';
+import { AdminLoginLog } from './pages/admin/AdminLoginLog';
+import { AdminTeams } from './pages/admin/AdminTeams';
+import { AdminBackup } from './pages/admin/AdminBackup';
+import { AdminNotifications } from './pages/admin/AdminNotifications';
+import { AdminStorage } from './pages/admin/AdminStorage';
+import { CalendarPage } from './pages/CalendarPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { TemplatesPage } from './pages/TemplatesPage';
+import { GanttPage } from './pages/GanttPage';
+import { TeamBoardPage } from './pages/TeamBoardPage';
 import { LoadingScreen } from './components/LoadingScreen';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -54,6 +66,11 @@ export default function App() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="chat" element={<ChatPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="templates" element={<TemplatesPage />} />
+        <Route path="gantt" element={<GanttPage />} />
+        <Route path="team-board" element={<TeamBoardPage />} />
         <Route path="pages/:slug" element={<CustomPageView />} />
       </Route>
       <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -68,8 +85,14 @@ export default function App() {
         <Route path="settings" element={<AdminSettings />} />
         <Route path="audit" element={<AdminAudit />} />
         <Route path="chat" element={<AdminChat />} />
+        <Route path="analytics" element={<AdminAnalytics />} />
+        <Route path="login-log" element={<AdminLoginLog />} />
+        <Route path="teams" element={<AdminTeams />} />
+        <Route path="backup" element={<AdminBackup />} />
+        <Route path="notifications" element={<AdminNotifications />} />
+        <Route path="storage" element={<AdminStorage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

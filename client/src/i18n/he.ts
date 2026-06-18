@@ -26,6 +26,9 @@ export const he = {
     adminPanel: 'פאנל ניהול',
     history: 'היסטוריה',
     chat: 'צ׳אט',
+    calendar: 'לוח שנה',
+    templates: 'תבניות',
+    profile: 'פרופיל',
   },
   auth: {
     welcomeBack: 'ברוכים השבים',

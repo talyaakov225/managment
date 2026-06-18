@@ -13,17 +13,28 @@ adminSettingsRouter.get('/', async (_req: AuthRequest, res: Response, next) => {
   } catch (err) { next(err); }
 });
 
-adminSettingsRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
+adminSettingsRouter.get('/nav-config', async (_req: AuthRequest, res: Response, next) => {
   try {
-    const schema = z.object({ value: z.string() });
-    const { value } = schema.parse(req.body);
+    const setting = await prisma.systemSetting.findUnique({ where: { key: 'nav_hidden_items' } });
+    const hidden: string[] = setting ? JSON.parse(setting.value) : [];
+    res.json({ hidden });
+  } catch (err) { next(err); }
+});
 
-    const old = await prisma.systemSetting.findUnique({ where: { id: req.params.id } });
-    const setting = await prisma.systemSetting.update({ where: { id: req.params.id }, data: { value } });
+adminSettingsRouter.put('/nav-config', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({ hidden: z.array(z.string()) });
+    const { hidden } = schema.parse(req.body);
+    const value = JSON.stringify(hidden);
 
-    await createAuditLog(req.userId!, 'setting.update', 'SystemSetting', setting.id,
-      { key: setting.key, oldValue: old?.value, newValue: value }, getClientIp(req));
-    res.json(setting);
+    await prisma.systemSetting.upsert({
+      where: { key: 'nav_hidden_items' },
+      update: { value },
+      create: { key: 'nav_hidden_items', value, type: 'json', group: 'navigation', label_he: 'כפתורי תפריט מוסתרים', label_en: 'Hidden nav items' },
+    });
+
+    await createAuditLog(req.userId!, 'setting.update', 'SystemSetting', 'nav_hidden_items', { hidden }, getClientIp(req));
+    res.json({ hidden });
   } catch (err) { next(err); }
 });
 
@@ -41,6 +52,20 @@ adminSettingsRouter.post('/', async (req: AuthRequest, res: Response, next) => {
     const setting = await prisma.systemSetting.create({ data });
     await createAuditLog(req.userId!, 'setting.create', 'SystemSetting', setting.id, data, getClientIp(req));
     res.status(201).json(setting);
+  } catch (err) { next(err); }
+});
+
+adminSettingsRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({ value: z.string() });
+    const { value } = schema.parse(req.body);
+
+    const old = await prisma.systemSetting.findUnique({ where: { id: req.params.id } });
+    const setting = await prisma.systemSetting.update({ where: { id: req.params.id }, data: { value } });
+
+    await createAuditLog(req.userId!, 'setting.update', 'SystemSetting', setting.id,
+      { key: setting.key, oldValue: old?.value, newValue: value }, getClientIp(req));
+    res.json(setting);
   } catch (err) { next(err); }
 });
 

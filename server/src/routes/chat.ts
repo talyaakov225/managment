@@ -279,9 +279,29 @@ chatRouter.post('/channels/:id/messages', async (req: AuthRequest, res: Response
     if (data.taskId) {
       const linkedTask = await prisma.task.findUnique({
         where: { id: data.taskId },
-        select: { title: true, assignees: { select: { userId: true } } },
+        select: { title: true, projectId: true, assignees: { select: { userId: true } } },
       });
       if (linkedTask) {
+        if (mentionedUserIds.length > 0) {
+          const existingAssigneeIds = new Set(linkedTask.assignees.map((a) => a.userId));
+          const newAssignees = mentionedUserIds.filter((uid) => !existingAssigneeIds.has(uid));
+          if (newAssignees.length > 0) {
+            await prisma.taskAssignee.createMany({
+              data: newAssignees.map((uid) => ({ taskId: data.taskId!, userId: uid, role: 'EDITOR' as const })),
+              skipDuplicates: true,
+            });
+            await prisma.notification.createMany({
+              data: newAssignees.map((uid) => ({
+                type: 'task_assigned',
+                title: `${authorName} שייך/ה אותך למשימה "${linkedTask.title}"`,
+                body: `שויכת למשימה דרך הצ'אט`,
+                userId: uid,
+                linkUrl: `/projects/${linkedTask.projectId}`,
+              })),
+            });
+          }
+        }
+
         const taskAssigneeIds = linkedTask.assignees
           .map((a) => a.userId)
           .filter((uid) => uid !== userId && !mentionedUserIds.includes(uid));
@@ -579,13 +599,30 @@ chatRouter.get('/channels/:id/read-status', async (req: AuthRequest, res: Respon
 
 // ── File Upload ──
 
+const ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv',
+  '.mp3', '.wav', '.ogg', '.m4a', '.webm',
+  '.mp4', '.mov', '.avi',
+  '.zip', '.rar', '.7z',
+]);
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 chatRouter.post('/upload', async (req: AuthRequest, res: Response, next) => {
   try {
     const uploadDir = path.join(__dirname, '../../uploads/chat');
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let totalSize = 0;
+    req.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_FILE_SIZE * 5) {
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', async () => {
       try {
         const contentType = req.headers['content-type'] || '';
@@ -601,7 +638,15 @@ chatRouter.post('/upload', async (req: AuthRequest, res: Response, next) => {
 
           const results = [];
           for (const part of parts) {
-            const ext = path.extname(part.filename) || '.bin';
+            const ext = (path.extname(part.filename) || '.bin').toLowerCase();
+            if (!ALLOWED_EXTENSIONS.has(ext)) {
+              res.status(400).json({ error: `File type ${ext} is not allowed` });
+              return;
+            }
+            if (part.data.length > MAX_FILE_SIZE) {
+              res.status(400).json({ error: `File exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` });
+              return;
+            }
             const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
             const filepath = path.join(uploadDir, filename);
             fs.writeFileSync(filepath, part.data);

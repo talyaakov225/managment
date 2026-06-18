@@ -6,13 +6,14 @@ import {
   ChevronLeft, ChevronRight, Moon, Sun, Menu, Languages,
   Shield, FileText, Clock, MessageCircle, Star, ListTodo,
   Bell, Search, Check, CheckCheck, ExternalLink, StickyNote, AlarmClock,
+  CalendarDays, LayoutTemplate, User as UserIcon, GanttChart, UsersRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useTheme } from '../context/ThemeContext';
 import { useLang } from '../context/LangContext';
 import { useNotification } from '../context/NotificationContext';
-import { projectApi, chatApi, taskApi, favoriteApi, reminderApi, type Favorite, type ReminderItem } from '../services/api';
+import { projectApi, chatApi, taskApi, favoriteApi, reminderApi, navConfigApi, type Favorite, type ReminderItem } from '../services/api';
 import { navPublicApi } from '../services/adminApi';
 import { Avatar } from './Avatar';
 import { Modal } from './Modal';
@@ -58,18 +59,31 @@ export function Layout() {
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [dueReminders, setDueReminders] = useState<ReminderItem[]>([]);
   const reminderPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [hiddenNav, setHiddenNav] = useState<Set<string>>(() => {
+    try {
+      const cached = localStorage.getItem('nav_hidden_items');
+      return cached ? new Set(JSON.parse(cached)) : new Set();
+    } catch { return new Set(); }
+  });
 
   useEffect(() => {
     loadProjects();
     loadFavorites();
     navPublicApi.getAll().then((res) => setNavItems(res.data)).catch(() => {});
+    navConfigApi.getHidden().then((res) => {
+      const hidden = new Set(res.data.hidden);
+      setHiddenNav(hidden);
+      localStorage.setItem('nav_hidden_items', JSON.stringify(res.data.hidden));
+    }).catch(() => {});
 
+    const notifiedIds = new Set<string>();
     async function checkDueReminders() {
       try {
         const { data } = await reminderApi.getDue();
-        if (data.length > 0) {
-          setDueReminders((prev) => [...prev, ...data]);
-          for (const r of data) {
+        setDueReminders(data);
+        for (const r of data) {
+          if (!notifiedIds.has(r.id)) {
+            notifiedIds.add(r.id);
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification(r.title, { body: r.content || '', icon: '/assets/favicon.ico' });
             }
@@ -215,7 +229,7 @@ export function Layout() {
         setCmdPaletteOpen((p) => !p);
         return;
       }
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement || (e.target as HTMLElement).isContentEditable) return;
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setShowQuickAdd(true);
@@ -256,6 +270,7 @@ export function Layout() {
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {!hiddenNav.has('dashboard') && (
         <NavLink
           to="/dashboard"
           className={({ isActive }) =>
@@ -269,7 +284,9 @@ export function Layout() {
           <LayoutDashboard className="w-5 h-5 shrink-0" />
           {!collapsed && <span>{t.nav.dashboard}</span>}
         </NavLink>
+        )}
 
+        {!hiddenNav.has('tasks') && (
         <NavLink
           to="/tasks"
           className={({ isActive }) =>
@@ -283,7 +300,9 @@ export function Layout() {
           <ListTodo className="w-5 h-5 shrink-0" />
           {!collapsed && <span>{t.nav.tasks}</span>}
         </NavLink>
+        )}
 
+        {!hiddenNav.has('history') && (
         <NavLink
           to="/history"
           className={({ isActive }) =>
@@ -297,7 +316,9 @@ export function Layout() {
           <Clock className="w-5 h-5 shrink-0" />
           {!collapsed && <span>{t.nav.history}</span>}
         </NavLink>
+        )}
 
+        {!hiddenNav.has('chat') && (
         <NavLink
           to="/chat"
           className={({ isActive }) =>
@@ -325,7 +346,73 @@ export function Layout() {
             </span>
           )}
         </NavLink>
+        )}
 
+        {!hiddenNav.has('calendar') && (
+        <NavLink
+          to="/calendar"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+            ${isActive
+              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <CalendarDays className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>{lang === 'he' ? 'לוח שנה' : 'Calendar'}</span>}
+        </NavLink>
+        )}
+
+        {!hiddenNav.has('templates') && (
+        <NavLink
+          to="/templates"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+            ${isActive
+              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <LayoutTemplate className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>{lang === 'he' ? 'תבניות' : 'Templates'}</span>}
+        </NavLink>
+        )}
+
+        {!hiddenNav.has('gantt') && (
+        <NavLink
+          to="/gantt"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+            ${isActive
+              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <GanttChart className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>{lang === 'he' ? 'ציר זמן' : 'Timeline'}</span>}
+        </NavLink>
+        )}
+
+        {!hiddenNav.has('team-board') && (
+        <NavLink
+          to="/team-board"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+            ${isActive
+              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${collapsed ? 'justify-center' : ''}`
+          }
+        >
+          <UsersRound className="w-5 h-5 shrink-0" />
+          {!collapsed && <span>{lang === 'he' ? 'לוח צוות' : 'Team Board'}</span>}
+        </NavLink>
+        )}
+
+        {!hiddenNav.has('notes') && (
         <button
           onClick={() => { setShowStickyNotes((p) => !p); setShowReminders(false); }}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full
@@ -337,7 +424,9 @@ export function Layout() {
           <StickyNote className="w-5 h-5 shrink-0" />
           {!collapsed && <span>{lang === 'he' ? 'פתקים' : 'Notes'}</span>}
         </button>
+        )}
 
+        {!hiddenNav.has('reminders') && (
         <button
           onClick={() => { setShowReminders((p) => !p); setShowStickyNotes(false); }}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full
@@ -354,6 +443,7 @@ export function Layout() {
             </span>
           )}
         </button>
+        )}
 
         <div className={`pt-4 pb-2 ${collapsed ? 'px-2' : 'px-3'}`}>
           {!collapsed && (
@@ -461,67 +551,77 @@ export function Layout() {
         )}
       </nav>
 
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-1">
-        {isAdmin && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-all border
-              ${isActive
-                ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20'
-                : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-950/50'}
-              ${collapsed ? 'justify-center' : ''}`
-            }
-          >
-            <Shield className="w-5 h-5 shrink-0" />
-            {!collapsed && <span>{t.nav.adminPanel}</span>}
-          </NavLink>
-        )}
-
-        <button
-          onClick={() => setLang(lang === 'he' ? 'en' : 'he')}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all ${collapsed ? 'justify-center' : ''}`}
-        >
-          <Languages className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>{lang === 'he' ? 'English' : 'עברית'}</span>}
-        </button>
-
-        <button onClick={toggleTheme} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all ${collapsed ? 'justify-center' : ''}`}>
-          {theme === 'light' ? <Moon className="w-5 h-5 shrink-0" /> : <Sun className="w-5 h-5 shrink-0" />}
-          {!collapsed && <span>{theme === 'light' ? t.nav.darkMode : t.nav.lightMode}</span>}
-        </button>
-
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
-            ${isActive
-              ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}
-            ${collapsed ? 'justify-center' : ''}`
-          }
-        >
-          <Settings className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>{t.nav.settings}</span>}
-        </NavLink>
-
-        <button
-          onClick={() => { logout(); navigate('/login'); }}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all ${collapsed ? 'justify-center' : ''}`}
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>{t.nav.logout}</span>}
-        </button>
-
+      <div className="px-3 py-2 border-t border-slate-200 dark:border-slate-800">
         {!collapsed && user && (
-          <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-2.5 px-2 py-2 mb-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
             <Avatar name={user.name} size="sm" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user.email}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
             </div>
+            <button
+              onClick={() => { logout(); navigate('/login'); }}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              title={t.nav.logout}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         )}
+
+        <div className={`flex items-center ${collapsed ? 'flex-col gap-1' : 'gap-1 justify-between'}`}>
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `p-2 rounded-lg transition-all ${isActive
+                  ? 'bg-red-500 text-white shadow-sm'
+                  : 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30'}`
+              }
+              title={t.nav.adminPanel}
+            >
+              <Shield className="w-4.5 h-4.5" />
+            </NavLink>
+          )}
+
+          <button
+            onClick={() => setLang(lang === 'he' ? 'en' : 'he')}
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title={lang === 'he' ? 'English' : 'עברית'}
+          >
+            <Languages className="w-4.5 h-4.5" />
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title={theme === 'light' ? t.nav.darkMode : t.nav.lightMode}
+          >
+            {theme === 'light' ? <Moon className="w-4.5 h-4.5" /> : <Sun className="w-4.5 h-4.5" />}
+          </button>
+
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `p-2 rounded-lg transition-all ${isActive
+                ? 'text-primary-600 bg-primary-50 dark:bg-primary-950'
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`
+            }
+            title={t.nav.settings}
+          >
+            <Settings className="w-4.5 h-4.5" />
+          </NavLink>
+
+          {collapsed && (
+            <button
+              onClick={() => { logout(); navigate('/login'); }}
+              className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              title={t.nav.logout}
+            >
+              <LogOut className="w-4.5 h-4.5" />
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
@@ -702,7 +802,7 @@ export function Layout() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="h-full"
+              className="min-h-full"
             >
               <Outlet context={{ projects, loadProjects }} />
             </motion.div>

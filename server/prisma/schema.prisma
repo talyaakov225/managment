@@ -39,6 +39,8 @@ model User {
   favorites        Favorite[]
   stickyNotes      StickyNote[]
   reminders2       Reminder[]
+  teamMemberships  TeamMember[]
+  loginLogs        LoginLog[]
 }
 
 model Project {
@@ -96,6 +98,11 @@ model Task {
   chatMessages   ChatMessage[]
   subtasks       Subtask[]
   activities     TaskActivity[]
+  tags           TaskTag[]
+  timeEntries    TimeEntry[]
+  dependsOn      TaskDependency[] @relation("DependentTask")
+  dependedBy     TaskDependency[] @relation("DependencyTask")
+  templateId     String?
 }
 
 model Subtask {
@@ -434,4 +441,111 @@ model AuditLog {
   user      User     @relation(fields: [userId], references: [id])
   ipAddress String?
   createdAt DateTime @default(now())
+}
+
+// ── Tags ──
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String @default("#6366f1")
+
+  tasks TaskTag[]
+}
+
+model TaskTag {
+  taskId String
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tagId  String
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+}
+
+// ── Task Templates ──
+
+model TaskTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  priority    String   @default("MEDIUM")
+  color       String?
+  createdAt   DateTime @default(now())
+  creatorId   String
+
+  subtasks TemplateSubtask[]
+  tags     String[] @default([])
+}
+
+model TemplateSubtask {
+  id       String @id @default(cuid())
+  title    String
+  position Int    @default(0)
+
+  templateId String
+  template   TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+// ── Time Tracking ──
+
+model TimeEntry {
+  id        String    @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime?
+  duration  Int?
+  note      String?
+  createdAt DateTime  @default(now())
+
+  taskId String
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+}
+
+// ── Login Log ──
+
+model LoginLog {
+  id        String   @id @default(cuid())
+  email     String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+// ── Task Dependencies ──
+
+model TaskDependency {
+  id           String @id @default(cuid())
+  type         String @default("blocks") // blocks, blocked_by
+
+  taskId       String
+  task         Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnId  String
+  dependsOn    Task @relation("DependencyTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+}
+
+// ── Teams ──
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  members TeamMember[]
+}
+
+model TeamMember {
+  teamId String
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   String @default("MEMBER")
+
+  @@id([teamId, userId])
 }

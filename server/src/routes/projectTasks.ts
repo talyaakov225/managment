@@ -13,6 +13,7 @@ const taskInclude = {
   assignees: {
     include: { user: { select: { id: true, name: true, email: true, avatar: true } } },
   },
+  tags: { include: { tag: true } },
   _count: { select: { comments: true } },
 };
 

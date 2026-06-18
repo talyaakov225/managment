@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { adminNavApi } from '../../services/adminApi';
 import { useLang } from '../../context/LangContext';
 import { Modal } from '../../components/Modal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { NavItem } from '../../types/admin';
 
 export function AdminNav() {
@@ -17,6 +18,7 @@ export function AdminNav() {
   const [newItem, setNewItem] = useState({ label_he: '', label_en: '', icon: 'FileText', href: '', visible: true });
   const [editingItem, setEditingItem] = useState<NavItem | null>(null);
   const [editForm, setEditForm] = useState({ label_he: '', label_en: '', icon: '', href: '' });
+  const [deleteNavId, setDeleteNavId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -76,7 +78,6 @@ export function AdminNav() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t.admin.deleteNavConfirm)) return;
     try {
       await adminNavApi.delete(id);
       toast.success(t.admin.deleted);
@@ -118,7 +119,7 @@ export function AdminNav() {
         <button onClick={() => toggleVisibility(item)} className="btn-ghost p-1.5">
           {item.visible ? <Eye className={`${iconSize} text-emerald-500`} /> : <EyeOff className={`${iconSize} text-slate-400`} />}
         </button>
-        <button onClick={() => handleDelete(item.id)} className="btn-ghost p-1.5 text-red-500">
+        <button onClick={() => setDeleteNavId(item.id)} className="btn-ghost p-1.5 text-red-500">
           <Trash2 className={iconSize} />
         </button>
       </div>
@@ -221,6 +222,16 @@ export function AdminNav() {
             </div>
           </div>
         </Modal>
+
+        <ConfirmDialog
+          isOpen={!!deleteNavId}
+          onClose={() => setDeleteNavId(null)}
+          onConfirm={() => { if (deleteNavId) handleDelete(deleteNavId); }}
+          title={t.admin.deleteNavConfirm}
+          message={lang === 'he' ? 'פעולה זו אינה ניתנת לביטול' : 'This action cannot be undone'}
+          confirmText={lang === 'he' ? 'מחק' : 'Delete'}
+          cancelText={t.common.cancel}
+        />
       </motion.div>
     </div>
   );

@@ -49,6 +49,16 @@ adminBoardRouter.put('/statuses/:id', async (req: AuthRequest, res: Response, ne
   } catch (err) { next(err); }
 });
 
+adminBoardRouter.put('/statuses/reorder', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({ ids: z.array(z.string()) });
+    const { ids } = schema.parse(req.body);
+    await Promise.all(ids.map((id, i) => prisma.boardStatus.update({ where: { id }, data: { position: i } })));
+    await createAuditLog(req.userId!, 'board.status_reorder', 'BoardStatus', null, { order: ids }, getClientIp(req));
+    res.json({ message: 'Reordered' });
+  } catch (err) { next(err); }
+});
+
 adminBoardRouter.delete('/statuses/:id', async (req: AuthRequest, res: Response, next) => {
   try {
     const status = await prisma.boardStatus.findUnique({ where: { id: req.params.id } });
@@ -102,6 +112,16 @@ adminBoardRouter.put('/priorities/:id', async (req: AuthRequest, res: Response, 
   } catch (err) { next(err); }
 });
 
+adminBoardRouter.put('/priorities/reorder', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({ ids: z.array(z.string()) });
+    const { ids } = schema.parse(req.body);
+    await Promise.all(ids.map((id, i) => prisma.boardPriority.update({ where: { id }, data: { position: i } })));
+    await createAuditLog(req.userId!, 'board.priority_reorder', 'BoardPriority', null, { order: ids }, getClientIp(req));
+    res.json({ message: 'Reordered' });
+  } catch (err) { next(err); }
+});
+
 adminBoardRouter.delete('/priorities/:id', async (req: AuthRequest, res: Response, next) => {
   try {
     await prisma.boardPriority.delete({ where: { id: req.params.id } });
@@ -140,6 +160,16 @@ adminBoardRouter.put('/categories/:id', async (req: AuthRequest, res: Response, 
     const category = await prisma.category.update({ where: { id: req.params.id }, data });
     await createAuditLog(req.userId!, 'board.category_update', 'Category', category.id, data, getClientIp(req));
     res.json(category);
+  } catch (err) { next(err); }
+});
+
+adminBoardRouter.put('/categories/reorder', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const schema = z.object({ ids: z.array(z.string()) });
+    const { ids } = schema.parse(req.body);
+    await Promise.all(ids.map((id, i) => prisma.category.update({ where: { id }, data: { position: i } })));
+    await createAuditLog(req.userId!, 'board.category_reorder', 'Category', null, { order: ids }, getClientIp(req));
+    res.json({ message: 'Reordered' });
   } catch (err) { next(err); }
 });
 

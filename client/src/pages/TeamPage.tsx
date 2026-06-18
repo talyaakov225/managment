@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, UserPlus, Shield, Crown, User, Trash2, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, UserPlus, Shield, Crown, User, Trash2, Mail } from 'lucide-react';
+import { PageSpinner } from '../components/Skeleton';
 import { memberApi, projectApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { Avatar } from '../components/Avatar';
 import { Modal } from '../components/Modal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import type { ProjectMember, Project } from '../types';
 import toast from 'react-hot-toast';
@@ -23,6 +25,7 @@ export function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'MEMBER' | 'ADMIN'>('MEMBER');
   const [inviting, setInviting] = useState(false);
+  const [removeMember, setRemoveMember] = useState<{ userId: string; name: string } | null>(null);
 
   const BackIcon = isRTL ? ArrowRight : ArrowLeft;
 
@@ -55,9 +58,8 @@ export function TeamPage() {
     finally { setInviting(false); }
   }
 
-  async function handleRemove(userId: string, name: string) {
+  async function handleRemove(userId: string) {
     if (!id) return;
-    if (!confirm(t.team.removeConfirm.replace('{name}', name))) return;
     try {
       await memberApi.remove(id, userId);
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
@@ -65,7 +67,7 @@ export function TeamPage() {
     } catch (err: any) { toast.error(err.response?.data?.error || t.team.removeFailed); }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
+  if (loading) return <PageSpinner />;
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
@@ -104,7 +106,7 @@ export function TeamPage() {
                   <RoleIcon className="w-3.5 h-3.5" />{role.label}
                 </span>
                 {isOwnerOrAdmin && member.role !== 'OWNER' && member.userId !== user?.id && (
-                  <button onClick={() => handleRemove(member.userId, member.user.name)} className="btn-ghost p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
+                  <button onClick={() => setRemoveMember({ userId: member.userId, name: member.user.name })} className="btn-ghost p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
@@ -142,6 +144,16 @@ export function TeamPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!removeMember}
+        onClose={() => setRemoveMember(null)}
+        onConfirm={() => { if (removeMember) handleRemove(removeMember.userId); }}
+        title={t.team.removeConfirm.replace('{name}', removeMember?.name || '')}
+        message={isRTL ? 'פעולה זו תסיר את המשתמש מהפרויקט' : 'This will remove the user from the project'}
+        confirmText={isRTL ? 'הסר' : 'Remove'}
+        cancelText={isRTL ? 'ביטול' : 'Cancel'}
+      />
     </div>
   );
 }

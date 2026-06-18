@@ -56,6 +56,7 @@ export interface Task {
   project?: { id: string; name: string };
   comments?: Comment[];
   _count?: { comments: number };
+  tags?: { id: string; name: string; color: string }[];
   createdAt: string;
   updatedAt: string;
 }

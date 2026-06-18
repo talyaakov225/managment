@@ -317,8 +317,118 @@ export const reminderApi = {
   getDue: () => api.get<ReminderItem[]>('/reminders/due'),
   create: (data: { title: string; content?: string; color?: string; triggerAt: string }) =>
     api.post<ReminderItem>('/reminders', data),
+  update: (id: string, data: { title?: string; content?: string; color?: string; triggerAt?: string }) =>
+    api.put<ReminderItem>(`/reminders/${id}`, data),
   dismiss: (id: string) => api.put<ReminderItem>(`/reminders/${id}/dismiss`),
   delete: (id: string) => api.delete(`/reminders/${id}`),
+};
+
+// ── Tags ──
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  _count?: { tasks: number };
+}
+
+export const tagApi = {
+  getAll: () => api.get<Tag[]>('/tags'),
+  create: (data: { name: string; color?: string }) => api.post<Tag>('/tags', data),
+  update: (id: string, data: { name?: string; color?: string }) => api.put<Tag>(`/tags/${id}`, data),
+  delete: (id: string) => api.delete(`/tags/${id}`),
+  setTaskTags: (taskId: string, tagIds: string[]) => api.post<Tag[]>(`/tags/task/${taskId}`, { tagIds }),
+  getTaskTags: (taskId: string) => api.get<Tag[]>(`/tags/task/${taskId}`),
+};
+
+// ── Task Templates ──
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  priority: string;
+  color: string | null;
+  tags: string[];
+  subtasks: { id: string; title: string; position: number }[];
+  createdAt: string;
+}
+
+export const templateApi = {
+  getAll: () => api.get<TaskTemplate[]>('/templates'),
+  create: (data: { name: string; description?: string; priority?: string; color?: string; subtasks?: string[]; tags?: string[] }) =>
+    api.post<TaskTemplate>('/templates', data),
+  delete: (id: string) => api.delete(`/templates/${id}`),
+  apply: (id: string, projectId: string) => api.post(`/templates/${id}/apply`, { projectId }),
+};
+
+// ── Time Tracking ──
+
+export interface TimeEntry {
+  id: string;
+  taskId: string;
+  userId: string;
+  startTime: string;
+  endTime: string | null;
+  duration: number | null;
+  note: string | null;
+  createdAt: string;
+  task?: { id: string; title: string; projectId: string; project: { name: string } };
+}
+
+export const timeTrackingApi = {
+  getByTask: (taskId: string) => api.get<TimeEntry[]>(`/tasks/${taskId}/time-entries`),
+  start: (taskId: string, data: { startTime: string; note?: string }) =>
+    api.post<TimeEntry>(`/tasks/${taskId}/time-entries`, data),
+  stop: (id: string, data: { endTime: string; duration: number }) =>
+    api.put<TimeEntry>(`/tasks/time-entries/${id}`, data),
+  delete: (id: string) => api.delete(`/tasks/time-entries/${id}`),
+  getReport: (params?: { projectId?: string; userId?: string; from?: string; to?: string }) =>
+    api.get<{ entries: TimeEntry[]; totalDuration: number }>('/tasks/time-report', { params }),
+};
+
+// ── Task Dependencies ──
+
+export interface TaskDependency {
+  id: string;
+  type: string;
+  taskId: string;
+  dependsOnId: string;
+  dependsOn?: { id: string; title: string; status: string };
+  task?: { id: string; title: string; status: string };
+}
+
+export const dependencyApi = {
+  getByTask: (taskId: string) => api.get<{ dependsOn: TaskDependency[]; dependedBy: TaskDependency[] }>(`/tasks/${taskId}/dependencies`),
+  create: (taskId: string, dependsOnId: string) => api.post<TaskDependency>(`/tasks/${taskId}/dependencies`, { dependsOnId }),
+  delete: (id: string) => api.delete(`/tasks/dependencies/${id}`),
+};
+
+// ── Teams ──
+
+export interface Team {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  createdAt: string;
+  members: { teamId: string; userId: string; role: string; user?: { id: string; name: string; avatar: string | null; email: string } }[];
+  _count: { members: number };
+}
+
+export const teamApi2 = {
+  getAll: () => api.get<Team[]>('/teams'),
+  create: (data: { name: string; description?: string; color?: string; memberIds?: string[] }) =>
+    api.post<Team>('/teams', data),
+  update: (id: string, data: { name?: string; description?: string; color?: string }) =>
+    api.put<Team>(`/teams/${id}`, data),
+  delete: (id: string) => api.delete(`/teams/${id}`),
+  addMember: (teamId: string, userId: string) => api.post(`/teams/${teamId}/members`, { userId }),
+  removeMember: (teamId: string, userId: string) => api.delete(`/teams/${teamId}/members/${userId}`),
+};
+
+export const navConfigApi = {
+  getHidden: () => api.get<{ hidden: string[] }>('/board/nav-config'),
 };
 
 export default api;

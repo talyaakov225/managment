@@ -6,6 +6,18 @@ import { useLang } from '../context/LangContext';
 import type { Task } from '../types';
 import { PRIORITY_STYLE } from '../types';
 
+function htmlToPreview(html: string, maxLen = 100): string {
+  return html
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(td|th|li|p|div|h[1-6])>/gi, ' · ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen);
+}
+
 interface TaskCardProps {
   task: Task;
   onClick: () => void;
@@ -70,7 +82,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
         {task.description && (
           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 ms-4 mb-3">
-            {task.description.replace(/<[^>]*>/g, '').slice(0, 100)}
+            {htmlToPreview(task.description)}
           </p>
         )}
 

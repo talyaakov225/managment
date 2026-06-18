@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx esbuild src/index.ts --bundle --platform=node --outdir=dist --format=cjs --external:@prisma/client --external:bcryptjs --external:jsonwebtoken --external:zod --external:cors --external:express",
+    "build": "npx esbuild src/index.ts --bundle --platform=node --outdir=dist --format=cjs --external:@prisma/client --external:bcryptjs --external:jsonwebtoken --external:zod --external:cors --external:express --external:socket.io --external:nodemailer",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -19,6 +19,8 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.3",
+    "socket.io": "^4.8.3",
     "zod": "^3.25.23"
   },
   "devDependencies": {

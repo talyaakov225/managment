@@ -17,24 +17,24 @@ reminderRouter.get('/', async (req: AuthRequest, res: Response, next) => {
 
 reminderRouter.get('/due', async (req: AuthRequest, res: Response, next) => {
   try {
-    const due = await prisma.reminder.findMany({
+    const active = await prisma.reminder.findMany({
       where: {
         userId: req.userId!,
-        triggered: false,
         dismissed: false,
         triggerAt: { lte: new Date() },
       },
       orderBy: { triggerAt: 'asc' },
     });
 
-    if (due.length > 0) {
+    const newlyTriggered = active.filter((r) => !r.triggered);
+    if (newlyTriggered.length > 0) {
       await prisma.reminder.updateMany({
-        where: { id: { in: due.map((r) => r.id) } },
+        where: { id: { in: newlyTriggered.map((r) => r.id) } },
         data: { triggered: true },
       });
     }
 
-    res.json(due);
+    res.json(active);
   } catch (err) { next(err); }
 });
 
@@ -55,6 +55,31 @@ reminderRouter.post('/', async (req: AuthRequest, res: Response, next) => {
       },
     });
     res.status(201).json(reminder);
+  } catch (err) { next(err); }
+});
+
+reminderRouter.put('/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const reminder = await prisma.reminder.findUnique({ where: { id: req.params.id } });
+    if (!reminder || reminder.userId !== req.userId) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const { title, content, color, triggerAt } = req.body;
+    const data: Record<string, unknown> = {};
+    if (title !== undefined) data.title = title;
+    if (content !== undefined) data.content = content || null;
+    if (color !== undefined) data.color = color;
+    if (triggerAt !== undefined) {
+      data.triggerAt = new Date(triggerAt);
+      data.triggered = new Date(triggerAt) > new Date() ? false : reminder.triggered;
+      data.dismissed = false;
+    }
+    const updated = await prisma.reminder.update({
+      where: { id: req.params.id },
+      data,
+    });
+    res.json(updated);
   } catch (err) { next(err); }
 });
 

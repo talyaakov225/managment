@@ -1,3 +1,5 @@
+import { Loader2 } from 'lucide-react';
+
 interface SkeletonProps {
   className?: string;
 }
@@ -5,6 +7,14 @@ interface SkeletonProps {
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
     <div className={`animate-pulse bg-slate-200 dark:bg-slate-800 rounded-lg ${className}`} />
+  );
+}
+
+export function PageSpinner() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[300px]">
+      <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+    </div>
   );
 }
 

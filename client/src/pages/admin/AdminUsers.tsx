@@ -7,6 +7,7 @@ import { adminUsersApi, adminRolesApi } from '../../services/adminApi';
 import { useLang } from '../../context/LangContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Avatar } from '../../components/Avatar';
 import type { AdminUser, AdminRole } from '../../types/admin';
 
@@ -26,6 +27,7 @@ export function AdminUsers() {
   const [resetUser, setResetUser] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'reject' | 'delete'; userId: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { load(); }, [filter]);
@@ -70,7 +72,6 @@ export function AdminUsers() {
   }
 
   async function handleReject(userId: string) {
-    if (!confirm(t.admin.rejectUserConfirm)) return;
     try {
       await adminUsersApi.reject(userId);
       toast.success(t.admin.userRejected);
@@ -87,7 +88,6 @@ export function AdminUsers() {
   }
 
   async function handleDelete(userId: string) {
-    if (!confirm(t.admin.deleteUserConfirm)) return;
     try {
       await adminUsersApi.delete(userId);
       toast.success(t.admin.userDeleted);
@@ -239,7 +239,7 @@ export function AdminUsers() {
                         {t.admin.approve}
                       </button>
                       <button
-                        onClick={() => handleReject(u.id)}
+                        onClick={() => setConfirmAction({ type: 'reject', userId: u.id })}
                         className="btn-ghost text-sm flex items-center gap-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
                       >
                         <XCircle className="w-4 h-4" />
@@ -302,7 +302,7 @@ export function AdminUsers() {
                       )}
 
                       {currentUser?.globalRole === 'SUPER_ADMIN' && u.id !== currentUser.id && (
-                        <button onClick={() => handleDelete(u.id)} className="btn-ghost p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
+                        <button onClick={() => setConfirmAction({ type: 'delete', userId: u.id })} className="btn-ghost p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -359,6 +359,23 @@ export function AdminUsers() {
             </div>
           )}
         </Modal>
+
+        <ConfirmDialog
+          isOpen={!!confirmAction}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={() => {
+            if (!confirmAction) return;
+            if (confirmAction.type === 'reject') handleReject(confirmAction.userId);
+            else handleDelete(confirmAction.userId);
+          }}
+          title={confirmAction?.type === 'reject' ? t.admin.rejectUserConfirm : t.admin.deleteUserConfirm}
+          message={confirmAction?.type === 'reject'
+            ? (t.admin.rejectUserConfirm)
+            : (t.admin.deleteUserConfirm)}
+          confirmText={confirmAction?.type === 'reject' ? (t.admin.reject || 'Reject') : (t.admin.delete || 'Delete')}
+          cancelText={t.common.cancel}
+          variant={confirmAction?.type === 'delete' ? 'danger' : 'warning'}
+        />
       </motion.div>
     </div>
   );

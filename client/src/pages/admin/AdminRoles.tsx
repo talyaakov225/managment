@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { adminRolesApi } from '../../services/adminApi';
 import { useLang } from '../../context/LangContext';
 import { Modal } from '../../components/Modal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { AdminRole, Permission } from '../../types/admin';
 
 const PERM_LABELS_HE: Record<string, string> = {
@@ -48,6 +49,7 @@ export function AdminRoles() {
   const [newRole, setNewRole] = useState({ name: '', displayName: '', color: '#6366f1' });
   const [newRolePermissions, setNewRolePermissions] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['projects', 'tasks']));
+  const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -80,7 +82,6 @@ export function AdminRoles() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t.admin.deleteRoleConfirm)) return;
     try {
       await adminRolesApi.delete(id);
       toast.success(t.admin.roleDeleted);
@@ -191,7 +192,7 @@ export function AdminRoles() {
                     <p className="text-xs text-slate-400">{role._count.users} {t.admin.users} • {role.permissions.length} {t.admin.permissions}</p>
                   </div>
                   {!role.isSystem && (
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(role.id); }} className="btn-ghost p-1 text-red-500">
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteRoleId(role.id); }} className="btn-ghost p-1 text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -396,6 +397,16 @@ export function AdminRoles() {
             <button onClick={handleCreate} disabled={!newRole.name || !newRole.displayName} className="btn-primary flex-1">{t.common.create}</button>
           </div>
         </Modal>
+
+        <ConfirmDialog
+          isOpen={!!deleteRoleId}
+          onClose={() => setDeleteRoleId(null)}
+          onConfirm={() => { if (deleteRoleId) handleDelete(deleteRoleId); }}
+          title={t.admin.deleteRoleConfirm}
+          message={lang === 'he' ? 'פעולה זו אינה ניתנת לביטול' : 'This action cannot be undone'}
+          confirmText={lang === 'he' ? 'מחק' : 'Delete'}
+          cancelText={t.common.cancel}
+        />
       </motion.div>
     </div>
   );

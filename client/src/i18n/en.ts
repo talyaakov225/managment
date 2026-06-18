@@ -28,6 +28,9 @@ export const en: Translations = {
     adminPanel: 'Admin Panel',
     history: 'History',
     chat: 'Chat',
+    calendar: 'Calendar',
+    templates: 'Templates',
+    profile: 'Profile',
   },
   auth: {
     welcomeBack: 'Welcome back',

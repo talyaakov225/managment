@@ -3,8 +3,12 @@ import { motion } from 'framer-motion';
 import {
   Search, Filter, ChevronLeft, ChevronRight,
   Calendar, User, Flag, FolderOpen, Clock, X,
-  MessageSquare, CheckCircle2, Trash2, ListTodo, AlarmClock,
+  MessageSquare, CheckCircle2, Trash2, ListTodo, AlarmClock, Pencil,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { PageSpinner } from '../components/Skeleton';
+import { Modal } from '../components/Modal';
+import { ReminderForm } from '../components/ReminderPanel';
 import { taskApi, projectApi, reminderApi, type ReminderItem } from '../services/api';
 import { useLiveRefresh } from '../hooks/useLiveRefresh';
 import { useLang } from '../context/LangContext';
@@ -31,6 +35,13 @@ export function HistoryPage() {
 
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
+  const [editReminder, setEditReminder] = useState<ReminderItem | null>(null);
+  const [rTitle, setRTitle] = useState('');
+  const [rContent, setRContent] = useState('');
+  const [rColor, setRColor] = useState('#3b82f6');
+  const [rDate, setRDate] = useState('');
+  const [rTime, setRTime] = useState('');
+  const [rSaving, setRSaving] = useState(false);
 
   const [filters, setFilters] = useState({
     status: '',
@@ -75,6 +86,32 @@ export function HistoryPage() {
       setReminders(data);
     } catch { /* silent */ }
     finally { setLoadingReminders(false); }
+  }
+
+  function openReminderEdit(r: ReminderItem) {
+    setEditReminder(r);
+    setRTitle(r.title);
+    setRContent(r.content || '');
+    setRColor(r.color);
+    const dt = new Date(r.triggerAt);
+    setRDate(dt.toISOString().split('T')[0]);
+    setRTime(dt.toTimeString().slice(0, 5));
+  }
+
+  async function saveReminderEdit() {
+    if (!editReminder || !rTitle.trim() || !rDate || !rTime) return;
+    setRSaving(true);
+    try {
+      const triggerAt = new Date(`${rDate}T${rTime}`).toISOString();
+      const { data } = await reminderApi.update(editReminder.id, {
+        title: rTitle.trim(), content: rContent.trim() || undefined, color: rColor, triggerAt,
+      });
+      setReminders((prev) => prev.map((r) => r.id === data.id ? data : r));
+      setEditReminder(null);
+      toast.success(he ? 'תזכורת עודכנה' : 'Reminder updated');
+    } catch {
+      toast.error(he ? 'שגיאה בעדכון תזכורת' : 'Failed to update reminder');
+    } finally { setRSaving(false); }
   }
 
   async function silentRefresh() {
@@ -226,9 +263,7 @@ export function HistoryPage() {
         {/* ── Reminders Tab ── */}
         {activeTab === 'reminders' ? (
           loadingReminders ? (
-            <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+            <PageSpinner />
           ) : reminders.length === 0 ? (
             <div className="card p-12 text-center">
               <AlarmClock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -282,6 +317,13 @@ export function HistoryPage() {
                         </span>
                       )}
                       <button
+                        onClick={() => openReminderEdit(r)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title={he ? 'ערוך' : 'Edit'}
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                      <button
                         onClick={async () => {
                           await reminderApi.delete(r.id);
                           setReminders((prev) => prev.filter((rem) => rem.id !== r.id));
@@ -300,9 +342,7 @@ export function HistoryPage() {
           /* ── Tasks Tabs ── */
           <>
             {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-              </div>
+              <PageSpinner />
             ) : tasks.length === 0 ? (
               <div className="card p-12 text-center">
                 {activeTab === 'deleted' ? (
@@ -413,6 +453,22 @@ export function HistoryPage() {
           </>
         )}
       </motion.div>
+
+      <Modal isOpen={!!editReminder} onClose={() => setEditReminder(null)}
+        title={he ? 'עריכת תזכורת' : 'Edit Reminder'} size="sm">
+        <ReminderForm
+          he={he}
+          title={rTitle} setTitle={setRTitle}
+          content={rContent} setContent={setRContent}
+          date={rDate} setDate={setRDate}
+          time={rTime} setTime={setRTime}
+          color={rColor} setColor={setRColor}
+          saving={rSaving}
+          isEditing={true}
+          onSave={saveReminderEdit}
+          onCancel={() => setEditReminder(null)}
+        />
+      </Modal>
     </div>
   );
 }
