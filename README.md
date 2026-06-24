@@ -101,20 +101,4 @@ Deploy the Express server to Railway, Render, or any Node.js hosting.
 ### Database
 For production, change the Prisma datasource provider from `sqlite` to `postgresql` in `server/prisma/schema.prisma` and update the `DATABASE_URL` in your environment.
 
-## API Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | /api/auth/register | Register a new user |
-| POST | /api/auth/login | Login |
-| GET | /api/auth/me | Get current user |
-| GET | /api/projects | List user's projects |
-| POST | /api/projects | Create project |
-| GET | /api/projects/:id/tasks | Get project tasks |
-| POST | /api/projects/:id/tasks | Create task |
-| PUT | /api/tasks/:id | Update task |
-| PATCH | /api/tasks/:id/position | Update task position (drag & drop) |
-| GET | /api/projects/:id/members | Get project members |
-| POST | /api/projects/:id/members | Add member |
-| GET | /api/tasks/:id/comments | Get task comments |
-| POST | /api/tasks/:id/comments | Add comment |
